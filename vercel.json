@@ -1,3 +1,11 @@
 {
-  "version": 2
+  "version": 2,
+  "functions": {
+    "api/anthropic.js": {
+      "maxDuration": 30
+    },
+    "api/enhance.js": {
+      "maxDuration": 30
+    }
+  }
 }

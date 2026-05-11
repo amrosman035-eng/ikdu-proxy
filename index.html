@@ -475,7 +475,7 @@ function callAPI(body) {
 }
 function analyzePhoto(base64, mime) {
   return callAPI({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-6-20260217',
     max_tokens: 1000,
     messages: [{role:'user', content:[
       {type:'image', source:{type:'base64', media_type: mime, data: base64}},
@@ -489,7 +489,7 @@ function analyzePhoto(base64, mime) {
 }
 function makeArabicAPI(caption) {
   return callAPI({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-6-20260217',
     max_tokens: 300,
     messages: [{role:'user', content:'Translate to Arabic for IKDU luxury Egyptian design brand. Minimal refined tone. Return ONLY the Arabic:\n\n"'+caption+'"'}]
   }).then(function(data) {

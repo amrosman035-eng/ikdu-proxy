@@ -3,10 +3,9 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // Allow requests from anywhere (needed for browser-based apps)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', '*');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -15,19 +14,18 @@ export default async function handler(req, res) {
     const { image, width, height } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
-    // Convert base64 → buffer → Blob
     const buffer = Buffer.from(image, 'base64');
     const blob = new Blob([buffer], { type: 'image/jpeg' });
 
-    const form = new FormData();
-    form.append('image_file', blob, 'image.jpg');
-    form.append('target_width', String(width || 1200));
-    form.append('target_height', String(height || 900));
+    const formData = new FormData();
+    formData.append('image_file', blob, 'image.jpg');
+    formData.append('target_width', String(width || 1200));
+    formData.append('target_height', String(height || 900));
 
     const clipRes = await fetch('https://clipdrop-api.co/image-upscaling/v1/upscale', {
       method: 'POST',
       headers: { 'x-api-key': process.env.CLIPDROP_KEY },
-      body: form,
+      body: formData,
     });
 
     if (!clipRes.ok) {

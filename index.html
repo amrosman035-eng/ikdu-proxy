@@ -507,10 +507,9 @@ function setSliders({ brightness = 0, contrast = 0, saturation = 0, warmth = 0 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 async function analyzePhoto(base64, mimeType) {
-  const key = await getAnthropicKey();
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(`${CLIPDROP_PROXY}/api/anthropic`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514', max_tokens: 1000,
       messages: [{ role: 'user', content: [
@@ -531,10 +530,9 @@ Rating 1-5. Voice: Architectural Digest. Minimal. Confident.` }
 }
 
 async function generateArabicCaption(captionEn) {
-  const key = await getAnthropicKey();
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(`${CLIPDROP_PROXY}/api/anthropic`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 300, messages: [{ role: 'user', content: `Translate to Arabic for IKDU luxury Egyptian design brand. Minimal refined tone. Return ONLY the Arabic:\n\n"${captionEn}"` }] })
   });
   const data = await res.json();

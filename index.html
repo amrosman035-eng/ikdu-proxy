@@ -627,7 +627,7 @@ function applyEditSuggestion(idx) {
   errDiv.style.display = 'none';
   statusDiv.style.display = 'block';
   statusDiv.style.color = 'var(--gold)';
-  statusDiv.textContent = 'Sending to Stability AI — 10-20 seconds...';
+  statusDiv.textContent = 'Sending to Nano Banana AI — 10-20 seconds...';
   document.getElementById('edit-savebtn').style.display = 'none';
 
   // Show overlay
@@ -663,7 +663,37 @@ function applyEditSuggestion(idx) {
     document.getElementById('aiov').classList.remove('show');
   });
 }
-
+function applyCustomEdit() {
+  var prompt = document.getElementById('edit-custom-input').value.trim();
+  if (!prompt) return;
+  var errDiv = document.getElementById('edit-err');
+  var statusDiv = document.getElementById('edit-status');
+  errDiv.style.display = 'none';
+  statusDiv.style.display = 'block';
+  statusDiv.style.color = 'var(--gold)';
+  statusDiv.textContent = 'Sending to Gemini AI — 10-20 seconds...';
+  document.getElementById('edit-savebtn').style.display = 'none';
+  document.getElementById('aiov-label').textContent = 'AI EDITING...';
+  document.getElementById('aiov-sub').textContent = prompt;
+  document.getElementById('aiov').classList.add('show');
+  var sourceUrl = editUrl || curPhoto.thumbnail || curPhoto.url;
+  runGeminiEdit(sourceUrl, prompt).then(function(result) {
+    editUrl = result;
+    document.getElementById('mphoto').src = result;
+    document.getElementById('pbadge').classList.add('show');
+    document.getElementById('ebadge').textContent = 'AI EDITED';
+    statusDiv.style.color = 'var(--sage)';
+    statusDiv.textContent = 'Done! Apply more edits or save.';
+    document.getElementById('edit-savebtn').style.display = 'block';
+    document.getElementById('edit-custom-input').value = '';
+  }).catch(function(e) {
+    errDiv.textContent = 'Edit failed: ' + e.message;
+    errDiv.style.display = 'block';
+    statusDiv.style.display = 'none';
+  }).finally(function() {
+    document.getElementById('aiov').classList.remove('show');
+  });
+}
 function applyEdit() {
   if (!editUrl || !curPhoto) return;
   var btn = document.getElementById('edit-savebtn');

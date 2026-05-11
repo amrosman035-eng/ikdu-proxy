@@ -511,7 +511,7 @@ async function analyzePhoto(base64, mimeType) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+      model: 'claude-3-5-sonnet-20241022', max_tokens: 1000,
       messages: [{ role: 'user', content: [
         { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
         { type: 'text', text: `You are the content curator for IKDU — a luxury Egyptian design+build company. IKDU designs all types of spaces: villas, apartments, offices, retail, nail salons, kindergartens, clinics, restaurants, and more. Celebrate the space for what it is.
@@ -533,7 +533,7 @@ async function generateArabicCaption(captionEn) {
   const res = await fetch(`${CLIPDROP_PROXY}/api/anthropic`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 300, messages: [{ role: 'user', content: `Translate to Arabic for IKDU luxury Egyptian design brand. Minimal refined tone. Return ONLY the Arabic:\n\n"${captionEn}"` }] })
+    body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', max_tokens: 300, messages: [{ role: 'user', content: `Translate to Arabic for IKDU luxury Egyptian design brand. Minimal refined tone. Return ONLY the Arabic:\n\n"${captionEn}"` }] })
   });
   const data = await res.json();
   return data.content[0].text.trim();

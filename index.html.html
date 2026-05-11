@@ -475,21 +475,21 @@ function callAPI(body) {
 }
 function analyzePhoto(base64, mime) {
   return callAPI({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-3-haiku-20240307',
     max_tokens: 1000,
     messages: [{role:'user', content:[
       {type:'image', source:{type:'base64', media_type: mime, data: base64}},
       {type:'text', text:'You are the content curator for IKDU - a luxury Egyptian design+build company. IKDU designs all types of spaces: villas, apartments, offices, retail, nail salons, kindergartens, clinics, restaurants, and more. Celebrate the space for what it is.\n\nRespond ONLY with valid JSON:\n{"category":"finished_space|furniture|progress|materials","rating":1,"postability":"ready|enhance|reject","caption_en":"1-2 sentence caption","hashtags":["tag1","tag2"],"enhancement_notes":"tip or null","reject_reason":"reason or null"}\n\nRating 1-5. Voice: Architectural Digest. Minimal. Confident.'}
     ]}]
   }).then(function(data) {
-    if (data.error) throw new Error(data.error.message || 'API error');
+    if (data.error) throw new Error(JSON.stringify(data.error));
     var text = data.content.map(function(b) { return b.text || ''; }).join('');
     return JSON.parse(text.replace(/```json|```/g, '').trim());
   });
 }
 function makeArabicAPI(caption) {
   return callAPI({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-3-haiku-20240307',
     max_tokens: 300,
     messages: [{role:'user', content:'Translate to Arabic for IKDU luxury Egyptian design brand. Minimal refined tone. Return ONLY the Arabic:\n\n"'+caption+'"'}]
   }).then(function(data) {

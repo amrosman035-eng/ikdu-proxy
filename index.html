@@ -534,7 +534,7 @@ function analyzeForEditsAPI(base64) {
     model:'claude-sonnet-4-6', max_tokens:800,
     messages:[{role:'user', content:[
       {type:'image', source:{type:'base64', media_type:'image/jpeg', data:base64}},
-      {type:'text', text:'You are an AI photo editor for IKDU, a luxury Egyptian interior design brand. Analyze this photo and suggest specific targeted edits that would make it more postable on Instagram.\n\nRespond ONLY with valid JSON:\n{"edits":[{"label":"Short action label max 4 words","mode":"search_and_replace","search_prompt":"specific object or area to find in the image","prompt":"what to replace it with in luxury interior design style"}]}\n\nMax 4 suggestions. Only suggest edits that genuinely improve the photo. Be very specific in search_prompt so Stability AI can find the exact element.\n\nExamples of good suggestions:\n- label:"Remove floor clutter", search_prompt:"cardboard boxes and debris on floor", prompt:"clean polished marble floor"\n- label:"Add corner plant", search_prompt:"empty corner of room", prompt:"tall lush fiddle leaf fig tree in white ceramic planter"\n- label:"Clear side table", search_prompt:"cluttered side table with objects", prompt:"minimalist side table with single decorative vase"\n- label:"Improve wall art", search_prompt:"blank empty wall", prompt:"large framed abstract art in gold frame"\n\nIf the photo is already pristine, return fewer suggestions or just one subtle improvement.'}
+      {type:'text', text:'You are an AI photo editor for IKDU, a luxury Egyptian interior design brand. Analyze this photo and suggest specific targeted edits to make it more postable on Instagram.\n\nRespond ONLY with valid JSON:\n{"edits":[{"label":"Short action label max 4 words","prompt":"Full edit instruction — what to change, remove, or add. Be specific and descriptive. Mention the exact location in the image."}]}\n\nMax 4 suggestions. Each prompt should be a complete instruction Gemini can act on directly. Example: "Remove the cardboard boxes on the left side of the floor and replace with clean polished marble flooring" or "Add a tall lush fiddle leaf fig tree in a white ceramic planter in the empty right corner". Only suggest edits that genuinely improve the photo for luxury Instagram.'}
     ]}]
   }).then(function(data) {
     if (data.error) throw new Error(JSON.stringify(data.error));
@@ -543,12 +543,11 @@ function analyzeForEditsAPI(base64) {
     return parsed.edits || [];
   });
 }
-
-function runStabilityEdit(dataUrl, mode, prompt, searchPrompt) {
+function runGeminiEdit(dataUrl, prompt) {
   var base64 = dataUrl.split(',')[1];
-  return fetch(PROXY+'/api/edit', {
+  return fetch(PROXY+'/api/gemini-edit', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({image:base64, mode:mode, prompt:prompt, search_prompt:searchPrompt})
+    body:JSON.stringify({image:base64, prompt:prompt})
   }).then(function(r) {
     if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error || 'Edit failed: '+r.status); }); }
     return r.json();
@@ -557,7 +556,6 @@ function runStabilityEdit(dataUrl, mode, prompt, searchPrompt) {
     return 'data:image/jpeg;base64,'+d.image;
   });
 }
-
 // ── AI Edit UI ─────────────────────────────────────────────────────────────────
 var editSuggestions = [];
 
@@ -636,7 +634,7 @@ function applyEditSuggestion(idx) {
   // Use editUrl if we have a previous edit, otherwise use original
   var sourceUrl = editUrl || curPhoto.thumbnail || curPhoto.url;
 
-  runStabilityEdit(sourceUrl, edit.mode, edit.prompt, edit.search_prompt).then(function(result) {
+  runGeminiEdit(sourceUrl, edit.prompt).then(function(result) {
     editUrl = result;
     document.getElementById('mphoto').src = result;
     document.getElementById('pbadge').classList.add('show');

@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IKDU Content Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #07100d; --card: #0c1a14;
+      --border: #1a2a1f; --border-light: #253c2c;
+      --sage: #4d7a60; --lapis: #7a8fa8; --terra: #8c4a20;
+      --gold: #b8813a; --cream: #e8d5b0;
+      --text: #d4c9a8; --sub: #7a8a7a; --muted: #4a5a4a;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--border); }
+    button { font-family: 'DM Sans', sans-serif; }
+    textarea { font-family: 'DM Sans', sans-serif; }
+    input[type=range] { accent-color: var(--gold); cursor: pointer; }
+
+    /* Header */
+    #header { border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 58px; position: sticky; top: 0; background: var(--bg); z-index: 10; }
+    #logo { font-family: 'Cormorant Garamond', serif; font-size: 20px; letter-spacing: 0.18em; color: var(--cream); }
+    #logo span { color: var(--muted); font-size: 12px; letter-spacing: 0.06em; font-family: 'DM Sans', sans-serif; font-weight: 300; }
+    #tabs { display: flex; }
+    .tab { background: none; border: none; padding: 0 1.1rem; height: 58px; cursor: pointer; font-size: 12px; letter-spacing: 0.06em; color: var(--sub); border-bottom: 1.5px solid transparent; transition: color 0.15s; }
+    .tab.active { color: var(--cream); border-bottom-color: var(--cream); }
+    #schedule-btn { background: var(--terra); border: none; border-radius: 6px; padding: 7px 16px; color: var(--cream); font-size: 12px; cursor: pointer; display: none; }
+
+    /* Library */
+    #library { padding: 1.5rem 2rem; }
+    #notice { background: rgba(184,129,58,0.1); border: 1px solid rgba(184,129,58,0.25); border-radius: 6px; padding: 8px 14px; margin-bottom: 1rem; font-size: 12px; color: var(--gold); display: none; }
+    #drop-zone { border: 1px dashed var(--border); border-radius: 12px; padding: 5rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+    #drop-zone:hover, #drop-zone.drag { border-color: var(--sage); background: rgba(77,122,96,0.04); }
+    #drop-zone h2 { font-family: 'Cormorant Garamond', serif; font-size: 30px; color: var(--sub); margin-bottom: 8px; font-weight: 300; }
+    #drop-zone p { font-size: 13px; color: var(--muted); }
+    #stats { display: flex; gap: 1.5rem; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); display: none; }
+    .stat-val { font-size: 20px; font-family: 'Cormorant Garamond', serif; }
+    .stat-lbl { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+    #stats-right { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 10px; color: var(--muted); }
+    #clear-btn { background: none; border: none; color: var(--muted); font-size: 11px; cursor: pointer; text-decoration: underline; }
+    #filters { display: flex; align-items: center; gap: 6px; margin-bottom: 1.1rem; flex-wrap: wrap; display: none; }
+    .filter-btn { background: none; border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; color: var(--sub); font-size: 11px; cursor: pointer; transition: all 0.15s; }
+    .filter-btn.active { border-color: var(--gold); color: var(--gold); }
+    #add-btn { background: none; border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; color: var(--sub); font-size: 11px; cursor: pointer; }
+    #filter-count { margin-left: auto; font-size: 11px; color: var(--muted); }
+    #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px; }
+    #file-input { display: none; }
+
+    /* Card */
+    .card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; background: var(--card); transition: transform 0.18s; position: relative; }
+    .card:hover { transform: translateY(-2px); }
+    .card.approved { border-color: rgba(77,122,96,0.45); }
+    .card-img { position: relative; padding-top: 75%; background: #0a1510; }
+    .card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .card-img .placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; opacity: 0.2; }
+    .card-overlay { position: absolute; inset: 0; background: rgba(7,16,13,0.65); display: flex; align-items: center; justify-content: center; }
+    .card-overlay span { font-size: 9px; color: var(--cream); letter-spacing: 0.14em; }
+    .card-rating { position: absolute; top: 6px; right: 6px; background: rgba(7,16,13,0.88); border-radius: 4px; padding: 2px 6px; font-size: 9px; color: var(--gold); }
+    .card-ar { position: absolute; top: 6px; left: 6px; background: var(--terra); border-radius: 4px; padding: 2px 6px; font-size: 9px; color: var(--cream); }
+    .card-check { position: absolute; bottom: 6px; right: 6px; background: rgba(77,122,96,0.92); border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; }
+    .card-del { position: absolute; top: 6px; left: 6px; background: rgba(7,16,13,0.88); border: none; border-radius: 4px; width: 22px; height: 22px; color: var(--terra); font-size: 16px; cursor: pointer; align-items: center; justify-content: center; display: none; z-index: 2; }
+    .card:hover .card-del { display: flex; }
+    .card-body { padding: 8px 10px; }
+    .card-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+    .card-cat { font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em; }
+    .card-status { font-size: 9px; letter-spacing: 0.06em; margin-left: auto; }
+    .card-caption { font-size: 11px; color: var(--sub); line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+    /* Modal */
+    #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; }
+    #modal.open { display: flex; }
+    #modal-inner { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 860px; max-height: 92vh; overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; }
+    #modal-img { position: relative; min-height: 300px; background: #0a1510; overflow: hidden; }
+    #modal-img img { width: 100%; height: 100%; object-fit: cover; display: block; min-height: 300px; transition: filter 0.08s; }
+    #modal-img .no-preview { display: flex; align-items: center; justify-content: center; min-height: 300px; color: var(--muted); font-size: 13px; }
+    #modal-rating { position: absolute; top: 12px; right: 12px; background: rgba(7,16,13,0.88); border-radius: 6px; padding: 4px 10px; font-size: 13px; color: var(--gold); }
+    #preview-badge { position: absolute; top: 10px; left: 10px; display: none; gap: 4px; }
+    #preview-badge.show { display: flex; }
+    #orig-btn { font-size: 9px; padding: 3px 8px; border-radius: 4px; border: none; background: rgba(7,16,13,0.9); color: var(--cream); cursor: pointer; letter-spacing: 0.08em; }
+    #enhanced-badge { font-size: 9px; padding: 3px 8px; border-radius: 4px; background: rgba(77,122,96,0.9); color: #fff; letter-spacing: 0.08em; }
+    #ai-overlay { position: absolute; inset: 0; background: rgba(7,16,13,0.82); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+    #ai-overlay.show { display: flex; }
+    #ai-overlay span:first-child { font-size: 11px; color: var(--cream); letter-spacing: 0.14em; }
+    #ai-overlay span:last-child { font-size: 10px; color: var(--muted); }
+    #modal-info { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.7rem; overflow-y: auto; }
+    #modal-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    #modal-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    #modal-cat { font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em; flex-shrink: 0; }
+    #modal-name { font-size: 13px; color: var(--cream); font-family: 'Cormorant Garamond', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; flex-shrink: 0; line-height: 1; }
+    #approved-badge { background: rgba(77,122,96,0.12); border: 1px solid rgba(77,122,96,0.28); border-radius: 6px; padding: 5px 10px; font-size: 11px; color: var(--sage); display: none; }
+
+    /* Enhance */
+    #enhance-box { border: 1px solid var(--gold); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+    #enhance-header { padding: 8px 12px; background: rgba(184,129,58,0.12); display: flex; align-items: center; justify-content: space-between; }
+    #enhance-label { font-size: 11px; color: var(--gold); letter-spacing: 0.1em; font-weight: 500; }
+    #enhance-btns { display: flex; gap: 6px; }
+    .enhance-tab { font-size: 12px; padding: 5px 14px; border-radius: 4px; border: 1px solid var(--border); background: none; color: var(--sub); cursor: pointer; transition: all 0.15s; }
+    .enhance-tab.active { background: var(--gold); border-color: var(--gold); color: #000; }
+    #canvas-panel, #ai-panel { padding: 14px; display: none; }
+    #canvas-panel.show, #ai-panel.show { display: block; }
+    #presets { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+    .preset-btn { font-size: 10px; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border); background: none; color: var(--sub); cursor: pointer; }
+    .preset-btn.active { border-color: var(--gold); background: rgba(184,129,58,0.12); color: var(--gold); }
+    #reset-btn { font-size: 10px; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border); background: none; color: var(--muted); cursor: pointer; }
+    .slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .slider-row label { width: 72px; font-size: 10px; color: var(--muted); flex-shrink: 0; }
+    .slider-row input { flex: 1; }
+    .slider-val { width: 28px; font-size: 10px; color: var(--sub); text-align: right; }
+    #apply-btn { width: 100%; font-size: 11px; padding: 7px; border-radius: 4px; border: none; background: var(--sage); color: #fff; cursor: pointer; margin-top: 10px; display: none; }
+    #canvas-hint { font-size: 10px; color: var(--muted); text-align: center; padding: 4px 0; margin-top: 10px; }
+    #ai-status { font-size: 12px; line-height: 1.7; margin-bottom: 12px; }
+    #ai-run-btn { flex: 1; font-size: 12px; padding: 9px; border-radius: 4px; border: none; background: var(--gold); color: #000; cursor: pointer; }
+    #ai-use-btn { flex: 1; font-size: 12px; padding: 9px; border-radius: 4px; border: none; background: var(--sage); color: #fff; cursor: pointer; display: none; }
+    #ai-error { font-size: 11px; color: var(--terra); background: rgba(140,74,32,0.08); padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; display: none; word-break: break-all; line-height: 1.5; }
+    #ai-action-row { display: flex; gap: 8px; }
+
+    /* Caption */
+    #caption-section label { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+    #caption-ar { font-size: 14px; color: var(--text); line-height: 1.65; direction: rtl; text-align: right; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border); max-height: 60px; overflow-y: auto; display: none; }
+    #caption-en { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: 12px; line-height: 1.5; resize: none; outline: none; max-height: 60px; overflow-y: auto; }
+    #hashtags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .hashtag { font-size: 11px; color: var(--lapis); background: rgba(122,143,168,0.1); border-radius: 4px; padding: 2px 8px; }
+    #enhance-tip { background: rgba(184,129,58,0.08); border: 1px solid rgba(184,129,58,0.2); border-radius: 6px; padding: 8px 12px; display: none; }
+    #enhance-tip-lbl { font-size: 9px; color: var(--gold); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3px; }
+    #enhance-tip-txt { font-size: 12px; color: var(--sub); line-height: 1.5; max-height: 60px; overflow-y: auto; }
+    #reject-reason { background: rgba(140,74,32,0.08); border: 1px solid rgba(140,74,32,0.2); border-radius: 6px; padding: 8px 12px; display: none; }
+    #reject-lbl { font-size: 9px; color: var(--terra); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3px; }
+    #reject-txt { font-size: 12px; color: var(--sub); line-height: 1.5; max-height: 60px; overflow-y: auto; }
+    #ar-error { font-size: 12px; color: var(--terra); display: none; }
+
+    /* Modal Actions */
+    #modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    #make-ar-btn { background: rgba(140,74,32,0.12); border: 1px solid rgba(140,74,32,0.3); border-radius: 6px; padding: 6px 12px; color: var(--terra); font-size: 12px; cursor: pointer; }
+    #switch-en-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; color: var(--sub); font-size: 12px; cursor: pointer; display: none; }
+    #copy-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; color: var(--sub); font-size: 12px; cursor: pointer; margin-left: auto; transition: color 0.15s; }
+    #modal-approve-row { display: flex; gap: 8px; padding-top: 0.75rem; border-top: 1px solid var(--border); margin-top: auto; }
+    #approve-btn { flex: 1; background: var(--sage); border: none; border-radius: 6px; padding: 10px; color: #fff; font-size: 13px; cursor: pointer; }
+    #reject-btn { flex: 1; background: none; border: 1px solid var(--terra); border-radius: 6px; padding: 10px; color: var(--terra); font-size: 13px; cursor: pointer; }
+    #unapprove-btn { flex: 1; background: none; border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--sub); font-size: 13px; cursor: pointer; display: none; }
+
+    /* Schedule */
+    #schedule { padding: 1.5rem 2rem; display: none; }
+    #schedule-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+    #schedule-title { font-family: 'Cormorant Garamond', serif; font-size: 26px; color: var(--cream); margin-bottom: 4px; }
+    #schedule-sub { font-size: 12px; color: var(--sub); }
+    #regen-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; color: var(--sub); font-size: 12px; cursor: pointer; }
+    #schedule-list { display: flex; flex-direction: column; gap: 8px; }
+    .schedule-row { display: grid; grid-template-columns: 90px 90px 1fr 60px; gap: 1rem; align-items: center; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; background: var(--card); }
+    .sched-day { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+    .sched-date { font-family: 'Cormorant Garamond', serif; font-size: 19px; color: var(--cream); }
+    .sched-thumb { width: 80px; height: 58px; object-fit: cover; border-radius: 5px; }
+    .sched-cat { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .sched-caption { font-size: 12px; color: var(--text); line-height: 1.5; }
+    .sched-ar-note { font-size: 9px; color: var(--terra); margin-top: 3px; }
+    .sched-rating { font-size: 11px; color: var(--gold); margin-bottom: 3px; }
+    .sched-num { font-size: 10px; color: var(--muted); }
+    #no-schedule { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 62vh; gap: 10px; }
+    #no-schedule h2 { font-family: 'Cormorant Garamond', serif; font-size: 26px; color: var(--sub); }
+
+    /* Drag overlay */
+    #drag-overlay { position: fixed; inset: 0; background: rgba(77,122,96,0.07); border: 2px dashed var(--sage); z-index: 50; pointer-events: none; display: none; align-items: center; justify-content: center; }
+    #drag-overlay.show { display: flex; }
+    #drag-overlay span { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--sage); }
+
+    /* Loading */
+    #loading { display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--muted); letter-spacing: 0.2em; }
+  </style>
+</head>
+<body>
+
+<div id="loading">IKDU</div>
+
+<div id="app" style="display:none">
+  <!-- Header -->
+  <div id="header">
+    <div id="logo">IKDU <span>Content Studio</span></div>
+    <div id="tabs">
+      <button class="tab active" onclick="switchTab('library')">Library</button>
+      <button class="tab" onclick="switchTab('schedule')">Schedule</button>
+    </div>
+    <button id="schedule-btn" onclick="generateSchedule()">Generate Schedule</button>
+  </div>
+
+  <!-- Library -->
+  <div id="library">
+    <div id="notice"></div>
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <h2>Drop your photos here</h2>
+      <p>or click to browse — photos are saved automatically between sessions</p>
+    </div>
+    <div id="stats">
+      <div><div class="stat-val" id="stat-total" style="color:var(--sub)">0</div><div class="stat-lbl">Total</div></div>
+      <div><div class="stat-val" id="stat-ready" style="color:var(--sage)">0</div><div class="stat-lbl">Ready</div></div>
+      <div><div class="stat-val" id="stat-approved" style="color:var(--gold)">0</div><div class="stat-lbl">Approved</div></div>
+      <div><div class="stat-val" id="stat-rejected" style="color:var(--terra)">0</div><div class="stat-lbl">Rejected</div></div>
+      <div id="stats-right">
+        <span>● Saved between sessions</span>
+        <button id="clear-btn" onclick="clearAll()">Clear all</button>
+      </div>
+    </div>
+    <div id="filters">
+      <button id="add-btn" onclick="document.getElementById('file-input').click()">+ Add photos</button>
+      <div style="width:1px;height:14px;background:var(--border);margin:0 2px"></div>
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="ready">Ready</button>
+      <button class="filter-btn" data-filter="enhance">Enhance</button>
+      <button class="filter-btn" data-filter="approved">Approved</button>
+      <button class="filter-btn" data-filter="rejected">Rejected</button>
+      <button class="filter-btn" data-filter="finished_space">Finished Spaces</button>
+      <button class="filter-btn" data-filter="furniture">Furniture</button>
+      <button class="filter-btn" data-filter="progress">Progress</button>
+      <button class="filter-btn" data-filter="materials">Materials</button>
+      <span id="filter-count"></span>
+    </div>
+    <div id="grid"></div>
+    <input type="file" id="file-input" accept="image/*" multiple />
+  </div>
+
+  <!-- Schedule -->
+  <div id="schedule">
+    <div id="no-schedule">
+      <h2>No schedule yet</h2>
+      <button id="gen-sched-btn" onclick="generateSchedule()" style="background:var(--terra);border:none;border-radius:6px;padding:9px 22px;color:var(--cream);font-size:13px;cursor:pointer;display:none">Generate Schedule</button>
+      <span id="sched-hint" style="font-size:13px;color:var(--muted)">Approve photos in the Library first</span>
+    </div>
+    <div id="schedule-header" style="display:none">
+      <div><div id="schedule-title">Posting Schedule</div><div id="schedule-sub">2× per week — Tuesday & Friday — best rated first</div></div>
+      <button id="regen-btn" onclick="generateSchedule()">Regenerate</button>
+    </div>
+    <div id="schedule-list"></div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" onclick="closeModal()">
+    <div id="modal-inner" onclick="event.stopPropagation()">
+      <div id="modal-img">
+        <img id="modal-photo" src="" alt="" />
+        <div id="modal-rating"></div>
+        <div id="preview-badge">
+          <button id="orig-btn">HOLD: ORIGINAL</button>
+          <span id="enhanced-badge">ENHANCED</span>
+        </div>
+        <div id="ai-overlay">
+          <span>AI ENHANCING…</span>
+          <span>5–15 seconds</span>
+        </div>
+      </div>
+      <div id="modal-info">
+        <div id="modal-header">
+          <div id="modal-title">
+            <span id="modal-cat"></span>
+            <span style="color:var(--border);font-size:10px" id="modal-dot">·</span>
+            <span id="modal-name"></span>
+          </div>
+          <button id="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div id="approved-badge">✓ Approved for posting</div>
+
+        <!-- Enhance -->
+        <div id="enhance-box">
+          <div id="enhance-header">
+            <span id="enhance-label">✦ ENHANCE</span>
+            <div id="enhance-btns">
+              <button class="enhance-tab" id="qf-tab" onclick="toggleMode('canvas')">⚡ Quick Fix</button>
+              <button class="enhance-tab" id="ai-tab" onclick="toggleMode('ai')">✨ AI</button>
+            </div>
+          </div>
+          <div id="canvas-panel">
+            <div id="presets">
+              <button class="preset-btn" onclick="applyPreset('Auto Fix')">Auto Fix</button>
+              <button class="preset-btn" onclick="applyPreset('Bright & Airy')">Bright & Airy</button>
+              <button class="preset-btn" onclick="applyPreset('Warm & Rich')">Warm & Rich</button>
+              <button class="preset-btn" onclick="applyPreset('Cool & Sharp')">Cool & Sharp</button>
+              <button id="reset-btn" onclick="resetSliders()">Reset</button>
+            </div>
+            <div class="slider-row"><label>Brightness</label><input type="range" min="-80" max="80" value="0" id="sl-brightness" oninput="updateSlider()"/><span class="slider-val" id="sv-brightness">0</span></div>
+            <div class="slider-row"><label>Contrast</label><input type="range" min="-80" max="80" value="0" id="sl-contrast" oninput="updateSlider()"/><span class="slider-val" id="sv-contrast">0</span></div>
+            <div class="slider-row"><label>Saturation</label><input type="range" min="-80" max="80" value="0" id="sl-saturation" oninput="updateSlider()"/><span class="slider-val" id="sv-saturation">0</span></div>
+            <div class="slider-row"><label>Warmth</label><input type="range" min="-80" max="80" value="0" id="sl-warmth" oninput="updateSlider()"/><span class="slider-val" id="sv-warmth">0</span></div>
+            <button id="apply-btn" onclick="applyCanvas()">Apply & Save</button>
+            <div id="canvas-hint">Pick a preset or drag a slider to preview</div>
+          </div>
+          <div id="ai-panel">
+            <div id="ai-error"></div>
+            <div id="ai-status" style="color:var(--sub)">Sends your photo to Clipdrop AI for real upscaling and sharpening. Takes <strong style="color:var(--cream)">5–15 seconds</strong>.</div>
+            <div id="ai-action-row">
+              <button id="ai-run-btn" onclick="runAI()">✨ Run AI Enhance</button>
+              <button id="ai-use-btn" onclick="applyAI()">✓ Save Enhanced</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Caption -->
+        <div id="caption-section">
+          <label id="caption-lbl">Caption — English</label>
+          <div id="caption-ar"></div>
+          <textarea id="caption-en" rows="2"></textarea>
+        </div>
+        <div id="hashtags"></div>
+        <div id="enhance-tip"><div id="enhance-tip-lbl">Enhancement tip</div><div id="enhance-tip-txt"></div></div>
+        <div id="reject-reason"><div id="reject-lbl">Flagged reason</div><div id="reject-txt"></div></div>
+        <div id="ar-error"></div>
+        <div id="modal-actions">
+          <button id="make-ar-btn" onclick="makeArabic()">🇪🇬 Make Arabic post</button>
+          <button id="switch-en-btn" onclick="switchToEnglish()">Switch to English</button>
+          <button id="copy-btn" onclick="copyCaption()">Copy caption</button>
+        </div>
+        <div id="modal-approve-row">
+          <button id="approve-btn" onclick="approvePhoto()">Approve</button>
+          <button id="reject-btn" onclick="rejectPhoto()">Reject</button>
+          <button id="unapprove-btn" onclick="unapprovePhoto()">Unapprove</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="drag-overlay"><span>Drop to add</span></div>
+</div>
+
+<script>
+// ─── Config ───────────────────────────────────────────────────────────────────
+const ANTHROPIC_KEY_STORAGE = 'ikdu:anthropic_key';
+const CLIPDROP_PROXY = 'https://ikdu-proxy.vercel.app';
+
+const CATEGORY_META = {
+  finished_space: { label: 'Finished Space', color: '#7a8fa8' },
+  furniture:      { label: 'Furniture',       color: '#b8813a' },
+  progress:       { label: 'Progress',        color: '#4d7a60' },
+  materials:      { label: 'Materials',       color: '#8c4a20' },
+};
+
+const PRESETS = {
+  'Auto Fix':      { brightness: 25, contrast: 35, saturation: 30, warmth: 12 },
+  'Bright & Airy': { brightness: 40, contrast: 15, saturation: 10, warmth: 0  },
+  'Warm & Rich':   { brightness: 15, contrast: 40, saturation: 45, warmth: 30 },
+  'Cool & Sharp':  { brightness: 10, contrast: 45, saturation: 15, warmth: -15 },
+};
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let photos = [];
+let currentFilter = 'all';
+let currentPhoto = null;
+let currentMode = null;
+let aiPreviewUrl = null;
+let anthropicKey = '';
+
+// ─── Storage ──────────────────────────────────────────────────────────────────
+async function dbGet(key) {
+  return new Promise((resolve) => {
+    const req = indexedDB.open('ikdu_studio', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('photos');
+    req.onsuccess = e => {
+      const tx = e.target.result.transaction('photos', 'readonly');
+      const r = tx.objectStore('photos').get(key);
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => resolve(null);
+    };
+    req.onerror = () => resolve(null);
+  });
+}
+
+async function dbSet(key, value) {
+  return new Promise((resolve) => {
+    const req = indexedDB.open('ikdu_studio', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('photos');
+    req.onsuccess = e => {
+      const tx = e.target.result.transaction('photos', 'readwrite');
+      tx.objectStore('photos').put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    };
+    req.onerror = () => resolve();
+  });
+}
+
+async function dbDelete(key) {
+  return new Promise((resolve) => {
+    const req = indexedDB.open('ikdu_studio', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('photos');
+    req.onsuccess = e => {
+      const tx = e.target.result.transaction('photos', 'readwrite');
+      tx.objectStore('photos').delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    };
+    req.onerror = () => resolve();
+  });
+}
+
+async function savePhoto(photo) {
+  if (!photo.thumbnail) return;
+  const data = { id: photo.id, name: photo.name, thumbnail: photo.thumbnail, status: photo.status, analysis: photo.analysis, isArabic: photo.isArabic, caption_ar: photo.caption_ar };
+  await dbSet(`photo:${photo.id}`, data);
+  let index = await dbGet('index') || [];
+  if (!index.includes(photo.id)) { index.push(photo.id); await dbSet('index', index); }
+}
+
+async function deletePhoto(id) {
+  photos = photos.filter(p => p.id !== id);
+  await dbDelete(`photo:${id}`);
+  let index = await dbGet('index') || [];
+  await dbSet('index', index.filter(i => i !== id));
+  renderGrid();
+  updateStats();
+}
+
+async function loadPhotos() {
+  const index = await dbGet('index') || [];
+  const loaded = [];
+  for (const id of index) {
+    const data = await dbGet(`photo:${id}`);
+    if (data) loaded.push({ ...data, url: data.thumbnail });
+  }
+  return loaded;
+}
+
+async function clearAllData() {
+  if (!confirm('Clear all photos? This cannot be undone.')) return;
+  const index = await dbGet('index') || [];
+  for (const id of index) await dbDelete(`photo:${id}`);
+  await dbDelete('index');
+  photos = [];
+  renderGrid();
+  updateStats();
+}
+
+// ─── Image Utils ──────────────────────────────────────────────────────────────
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function compress(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxSize = 600;
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.65));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+function bakeFilter(dataUrl, sliders) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.filter = toFilter(sliders);
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.92));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function toFilter({ brightness = 0, contrast = 0, saturation = 0, warmth = 0 }) {
+  return [
+    `brightness(${1 + brightness / 100})`,
+    `contrast(${1 + contrast / 100})`,
+    `saturate(${1 + saturation / 100})`,
+    `hue-rotate(${warmth * 0.4}deg)`,
+    warmth > 0 ? `sepia(${Math.min(warmth / 120, 0.35)})` : '',
+  ].filter(Boolean).join(' ');
+}
+
+function getSliders() {
+  return {
+    brightness: parseInt(document.getElementById('sl-brightness').value),
+    contrast:   parseInt(document.getElementById('sl-contrast').value),
+    saturation: parseInt(document.getElementById('sl-saturation').value),
+    warmth:     parseInt(document.getElementById('sl-warmth').value),
+  };
+}
+
+function setSliders({ brightness = 0, contrast = 0, saturation = 0, warmth = 0 }) {
+  document.getElementById('sl-brightness').value = brightness;
+  document.getElementById('sl-contrast').value = contrast;
+  document.getElementById('sl-saturation').value = saturation;
+  document.getElementById('sl-warmth').value = warmth;
+  document.getElementById('sv-brightness').textContent = (brightness > 0 ? '+' : '') + brightness;
+  document.getElementById('sv-contrast').textContent   = (contrast > 0 ? '+' : '') + contrast;
+  document.getElementById('sv-saturation').textContent = (saturation > 0 ? '+' : '') + saturation;
+  document.getElementById('sv-warmth').textContent     = (warmth > 0 ? '+' : '') + warmth;
+}
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+async function analyzePhoto(base64, mimeType) {
+  const key = await getAnthropicKey();
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+        { type: 'text', text: `You are the content curator for IKDU — a luxury Egyptian design+build company. IKDU designs all types of spaces: villas, apartments, offices, retail, nail salons, kindergartens, clinics, restaurants, and more. Celebrate the space for what it is.
+
+Respond ONLY with valid JSON:
+{"category":"finished_space|furniture|progress|materials","rating":1,"postability":"ready|enhance|reject","caption_en":"1-2 sentence caption","hashtags":["tag1","tag2"],"enhancement_notes":"tip or null","reject_reason":"reason or null"}
+
+Rating 1-5. Voice: Architectural Digest. Minimal. Confident.` }
+      ]}]
+    })
+  });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return JSON.parse(data.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim());
+}
+
+async function generateArabicCaption(captionEn) {
+  const key = await getAnthropicKey();
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 300, messages: [{ role: 'user', content: `Translate to Arabic for IKDU luxury Egyptian design brand. Minimal refined tone. Return ONLY the Arabic:\n\n"${captionEn}"` }] })
+  });
+  const data = await res.json();
+  return data.content[0].text.trim();
+}
+
+async function aiUpscale(dataUrl) {
+  const { w, h } = await new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.src = dataUrl;
+  });
+  const scale = Math.min(2, 4096 / Math.max(w, h));
+  const base64 = dataUrl.split(',')[1];
+  const res = await fetch(`${CLIPDROP_PROXY}/api/enhance`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: base64, width: Math.round(w * scale), height: Math.round(h * scale) }),
+  });
+  if (!res.ok) { const t = await res.text(); throw new Error(`Proxy ${res.status}: ${t}`); }
+  const { image } = await res.json();
+  return `data:image/jpeg;base64,${image}`;
+}
+
+// ─── API Key Management ───────────────────────────────────────────────────────
+async function getAnthropicKey() {
+  if (anthropicKey) return anthropicKey;
+  let stored = localStorage.getItem(ANTHROPIC_KEY_STORAGE);
+  if (stored) { anthropicKey = stored; return stored; }
+  const key = prompt('Enter your Anthropic API key (starts with sk-ant-):');
+  if (!key) throw new Error('No API key provided');
+  localStorage.setItem(ANTHROPIC_KEY_STORAGE, key);
+  anthropicKey = key;
+  return key;
+}
+
+// ─── Schedule ─────────────────────────────────────────────────────────────────
+function getScheduleDates(count) {
+  const dates = [];
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  while (d.getDay() !== 2 && d.getDay() !== 5) d.setDate(d.getDate() + 1);
+  while (dates.length < count) {
+    dates.push(new Date(d));
+    d.setDate(d.getDate() + (d.getDay() === 2 ? 3 : 4));
+  }
+  return dates;
+}
+
+function generateSchedule() {
+  const approved = photos.filter(p => p.status === 'approved').sort((a, b) => (b.analysis?.rating || 0) - (a.analysis?.rating || 0));
+  if (!approved.length) { switchTab('schedule'); renderSchedule([]); return; }
+  const dates = getScheduleDates(approved.length);
+  const scheduled = approved.map((p, i) => ({ ...p, scheduledDate: dates[i] }));
+  renderSchedule(scheduled);
+  switchTab('schedule');
+}
+
+function renderSchedule(scheduled) {
+  const noSched = document.getElementById('no-schedule');
+  const schedHeader = document.getElementById('schedule-header');
+  const schedList = document.getElementById('schedule-list');
+  const genBtn = document.getElementById('gen-sched-btn');
+  const hint = document.getElementById('sched-hint');
+
+  if (!scheduled.length) {
+    noSched.style.display = 'flex'; schedHeader.style.display = 'none'; schedList.innerHTML = '';
+    const approvedCount = photos.filter(p => p.status === 'approved').length;
+    genBtn.style.display = approvedCount > 0 ? 'block' : 'none';
+    hint.style.display = approvedCount > 0 ? 'none' : 'block';
+    return;
+  }
+
+  noSched.style.display = 'none'; schedHeader.style.display = 'flex';
+  schedList.innerHTML = scheduled.map((post, i) => {
+    const d = new Date(post.scheduledDate);
+    const cat = post.analysis?.category ? CATEGORY_META[post.analysis.category] : null;
+    const thumb = post.thumbnail || post.url || '';
+    return `<div class="schedule-row">
+      <div><div class="sched-day">${DAYS[d.getDay()]}</div><div class="sched-date">${d.getDate()} ${MONTHS[d.getMonth()]}</div></div>
+      ${thumb ? `<img class="sched-thumb" src="${thumb}" alt="" />` : '<div class="sched-thumb" style="background:var(--border);border-radius:5px"></div>'}
+      <div>
+        ${cat ? `<div class="sched-cat" style="color:${cat.color}">${cat.label}</div>` : ''}
+        <div class="sched-caption">${post.isArabic && post.caption_ar ? post.caption_ar : (post.analysis?.caption_en || '')}</div>
+        ${post.isArabic ? '<div class="sched-ar-note">Arabic post — use Arabic logo</div>' : ''}
+      </div>
+      <div style="text-align:right">
+        <div class="sched-rating">${'★'.repeat(post.analysis?.rating || 0)}</div>
+        <div class="sched-num">#${i + 1}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function filterPhotos() {
+  return photos.filter(p => {
+    if (currentFilter === 'all') return true;
+    if (currentFilter === 'ready') return p.status === 'analyzed' && p.analysis?.postability === 'ready';
+    if (currentFilter === 'enhance') return p.status === 'analyzed' && p.analysis?.postability === 'enhance';
+    if (currentFilter === 'approved') return p.status === 'approved';
+    if (currentFilter === 'rejected') return p.status === 'rejected';
+    return p.analysis?.category === currentFilter;
+  });
+}
+
+function statusColor(photo) {
+  if (photo.status === 'approved') return 'var(--sage)';
+  if (photo.status === 'rejected' || photo.status === 'error') return 'var(--terra)';
+  if (photo.status === 'analyzing') return 'var(--gold)';
+  if (photo.analysis?.postability === 'ready') return 'var(--sage)';
+  if (photo.analysis?.postability === 'enhance') return 'var(--gold)';
+  return 'var(--terra)';
+}
+
+function statusLabel(photo) {
+  if (photo.status === 'analyzing') return 'Analyzing…';
+  if (photo.status === 'approved') return 'Approved';
+  if (photo.status === 'rejected') return 'Rejected';
+  if (photo.status === 'error') return 'Error';
+  if (photo.analysis?.postability === 'ready') return 'Ready';
+  if (photo.analysis?.postability === 'enhance') return 'Enhance';
+  return 'Review';
+}
+
+function renderGrid() {
+  const filtered = filterPhotos();
+  const grid = document.getElementById('grid');
+  const dropZone = document.getElementById('drop-zone');
+  const stats = document.getElementById('stats');
+  const filters = document.getElementById('filters');
+  const count = document.getElementById('filter-count');
+
+  dropZone.style.display = photos.length === 0 ? 'block' : 'none';
+  stats.style.display = photos.length > 0 ? 'flex' : 'none';
+  filters.style.display = photos.length > 0 ? 'flex' : 'none';
+  count.textContent = `${filtered.length} of ${photos.length}`;
+
+  grid.innerHTML = filtered.map(photo => {
+    const cat = photo.analysis?.category ? CATEGORY_META[photo.analysis.category] : null;
+    const url = photo.thumbnail || photo.url || '';
+    return `<div class="card ${photo.status === 'approved' ? 'approved' : ''}" data-id="${photo.id}" onclick="openModal('${photo.id}')">
+      <button class="card-del" onclick="event.stopPropagation();deletePhoto('${photo.id}')">×</button>
+      <div class="card-img">
+        ${url ? `<img src="${url}" alt="" onerror="this.style.display='none'" />` : '<div class="placeholder">🖼</div>'}
+        ${photo.status === 'analyzing' ? '<div class="card-overlay"><span>ANALYZING…</span></div>' : ''}
+        ${photo.analysis?.rating != null ? `<div class="card-rating">${'★'.repeat(photo.analysis.rating)}${'☆'.repeat(5 - photo.analysis.rating)}</div>` : ''}
+        ${photo.isArabic ? '<div class="card-ar">AR</div>' : ''}
+        ${photo.status === 'approved' ? '<div class="card-check">✓</div>' : ''}
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          ${cat ? `<span class="card-cat" style="color:${cat.color}">${cat.label}</span>` : ''}
+          <span class="card-status" style="color:${statusColor(photo)}">${statusLabel(photo)}</span>
+        </div>
+        ${photo.analysis?.caption_en ? `<div class="card-caption">${photo.analysis.caption_en}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = photos.length;
+  document.getElementById('stat-ready').textContent = photos.filter(p => p.analysis?.postability === 'ready').length;
+  document.getElementById('stat-approved').textContent = photos.filter(p => p.status === 'approved').length;
+  document.getElementById('stat-rejected').textContent = photos.filter(p => p.status === 'rejected').length;
+  const approvedCount = photos.filter(p => p.status === 'approved').length;
+  const schedBtn = document.getElementById('schedule-btn');
+  schedBtn.style.display = approvedCount > 0 ? 'block' : 'none';
+  schedBtn.textContent = `Generate Schedule (${approvedCount})`;
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function openModal(id) {
+  currentPhoto = photos.find(p => p.id === id);
+  if (!currentPhoto) return;
+  currentMode = null;
+  aiPreviewUrl = null;
+
+  const p = currentPhoto;
+  const cat = p.analysis?.category ? CATEGORY_META[p.analysis.category] : null;
+  const url = p.thumbnail || p.url || '';
+
+  document.getElementById('modal-photo').src = url;
+  document.getElementById('modal-photo').style.filter = 'none';
+  document.getElementById('modal-rating').textContent = p.analysis?.rating != null ? '★'.repeat(p.analysis.rating) + '☆'.repeat(5 - p.analysis.rating) : '';
+  document.getElementById('modal-cat').textContent = cat ? cat.label : '';
+  document.getElementById('modal-cat').style.color = cat ? cat.color : '';
+  document.getElementById('modal-dot').style.display = cat ? 'inline' : 'none';
+  document.getElementById('modal-name').textContent = p.name.replace(/\.[^.]+$/, '');
+  document.getElementById('approved-badge').style.display = p.status === 'approved' ? 'block' : 'none';
+  document.getElementById('preview-badge').classList.remove('show');
+  document.getElementById('ai-overlay').classList.remove('show');
+
+  // Caption
+  document.getElementById('caption-lbl').textContent = `Caption — ${p.isArabic ? 'Arabic' : 'English'}`;
+  document.getElementById('caption-ar').style.display = p.isArabic && p.caption_ar ? 'block' : 'none';
+  document.getElementById('caption-ar').textContent = p.caption_ar || '';
+  document.getElementById('caption-en').style.display = p.isArabic && p.caption_ar ? 'none' : 'block';
+  document.getElementById('caption-en').value = p.analysis?.caption_en || '';
+
+  // Hashtags
+  const ht = document.getElementById('hashtags');
+  ht.innerHTML = (p.analysis?.hashtags || []).map(h => `<span class="hashtag">${h}</span>`).join('');
+
+  // Tips
+  const tip = p.analysis?.enhancement_notes && p.analysis.enhancement_notes !== 'null';
+  document.getElementById('enhance-tip').style.display = tip ? 'block' : 'none';
+  if (tip) document.getElementById('enhance-tip-txt').textContent = p.analysis.enhancement_notes;
+
+  const rej = p.analysis?.reject_reason && p.analysis.reject_reason !== 'null';
+  document.getElementById('reject-reason').style.display = rej ? 'block' : 'none';
+  if (rej) document.getElementById('reject-txt').textContent = p.analysis.reject_reason;
+
+  // Buttons
+  document.getElementById('make-ar-btn').style.display = p.isArabic ? 'none' : 'block';
+  document.getElementById('switch-en-btn').style.display = p.isArabic ? 'block' : 'none';
+  document.getElementById('approve-btn').style.display = p.status !== 'approved' ? 'block' : 'none';
+  document.getElementById('reject-btn').style.display = p.status !== 'rejected' ? 'block' : 'none';
+  document.getElementById('unapprove-btn').style.display = p.status === 'approved' ? 'block' : 'none';
+  document.getElementById('ar-error').style.display = 'none';
+
+  // Enhance reset
+  resetEnhancePanel();
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  currentPhoto = null; currentMode = null; aiPreviewUrl = null;
+}
+
+function updateCurrentPhoto(updates) {
+  if (!currentPhoto) return;
+  Object.assign(currentPhoto, updates);
+  const idx = photos.findIndex(p => p.id === currentPhoto.id);
+  if (idx !== -1) { photos[idx] = { ...photos[idx], ...updates }; savePhoto(photos[idx]); }
+  renderGrid(); updateStats();
+}
+
+// ─── Enhance ──────────────────────────────────────────────────────────────────
+function resetEnhancePanel() {
+  currentMode = null; aiPreviewUrl = null;
+  document.getElementById('qf-tab').classList.remove('active');
+  document.getElementById('ai-tab').classList.remove('active');
+  document.getElementById('canvas-panel').classList.remove('show');
+  document.getElementById('ai-panel').classList.remove('show');
+  setSliders({ brightness: 0, contrast: 0, saturation: 0, warmth: 0 });
+  document.getElementById('apply-btn').style.display = 'none';
+  document.getElementById('canvas-hint').style.display = 'block';
+  document.getElementById('ai-use-btn').style.display = 'none';
+  document.getElementById('ai-error').style.display = 'none';
+  document.getElementById('ai-status').style.color = 'var(--sub)';
+  document.getElementById('ai-status').innerHTML = 'Sends your photo to Clipdrop AI for real upscaling and sharpening. Takes <strong style="color:var(--cream)">5–15 seconds</strong>.';
+  document.getElementById('ai-run-btn').textContent = '✨ Run AI Enhance';
+  document.getElementById('preview-badge').classList.remove('show');
+  if (currentPhoto) document.getElementById('modal-photo').src = currentPhoto.thumbnail || currentPhoto.url || '';
+  document.getElementById('modal-photo').style.filter = 'none';
+}
+
+function toggleMode(mode) {
+  if (currentMode === mode) { resetEnhancePanel(); return; }
+  currentMode = mode;
+  document.getElementById('qf-tab').classList.toggle('active', mode === 'canvas');
+  document.getElementById('ai-tab').classList.toggle('active', mode === 'ai');
+  document.getElementById('canvas-panel').classList.toggle('show', mode === 'canvas');
+  document.getElementById('ai-panel').classList.toggle('show', mode === 'ai');
+  if (mode === 'canvas') { setSliders({ brightness: 0, contrast: 0, saturation: 0, warmth: 0 }); }
+  if (mode === 'ai') { aiPreviewUrl = null; document.getElementById('ai-use-btn').style.display = 'none'; }
+}
+
+function updateSlider() {
+  const s = getSliders();
+  ['brightness','contrast','saturation','warmth'].forEach(k => {
+    document.getElementById(`sv-${k}`).textContent = (s[k] > 0 ? '+' : '') + s[k];
+    document.getElementById(`sv-${k}`).style.color = s[k] !== 0 ? 'var(--gold)' : 'var(--sub)';
+  });
+  const changed = Object.values(s).some(v => v !== 0);
+  document.getElementById('apply-btn').style.display = changed ? 'block' : 'none';
+  document.getElementById('canvas-hint').style.display = changed ? 'none' : 'block';
+  document.getElementById('modal-photo').style.filter = changed ? toFilter(s) : 'none';
+  if (changed) document.getElementById('preview-badge').classList.add('show');
+  else document.getElementById('preview-badge').classList.remove('show');
+}
+
+function applyPreset(name) {
+  setSliders(PRESETS[name]);
+  updateSlider();
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.toggle('active', b.textContent === name));
+}
+
+function resetSliders() {
+  setSliders({ brightness: 0, contrast: 0, saturation: 0, warmth: 0 });
+  updateSlider();
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+}
+
+async function applyCanvas() {
+  if (!currentPhoto) return;
+  const sliders = getSliders();
+  const baked = await bakeFilter(currentPhoto.thumbnail || currentPhoto.url, sliders);
+  const thumb = await compress(baked);
+  const url = thumb || baked;
+  updateCurrentPhoto({ url, thumbnail: url, status: 'analyzed' });
+  closeModal();
+}
+
+async function runAI() {
+  if (!currentPhoto) return;
+  document.getElementById('ai-overlay').classList.add('show');
+  document.getElementById('ai-error').style.display = 'none';
+  document.getElementById('ai-run-btn').textContent = 'Processing…';
+  document.getElementById('ai-run-btn').disabled = true;
+  document.getElementById('ai-status').style.color = 'var(--gold)';
+  document.getElementById('ai-status').textContent = 'Sending to Clipdrop AI…';
+  try {
+    aiPreviewUrl = await aiUpscale(currentPhoto.thumbnail || currentPhoto.url);
+    document.getElementById('modal-photo').src = aiPreviewUrl;
+    document.getElementById('preview-badge').classList.add('show');
+    document.getElementById('ai-use-btn').style.display = 'block';
+    document.getElementById('ai-status').style.color = 'var(--sage)';
+    document.getElementById('ai-status').innerHTML = '✓ Done! Hold <strong>HOLD: ORIGINAL</strong> to compare.';
+    document.getElementById('ai-run-btn').textContent = '↺ Run Again';
+  } catch (e) {
+    document.getElementById('ai-error').textContent = '⚠ ' + e.message;
+    document.getElementById('ai-error').style.display = 'block';
+    document.getElementById('ai-status').textContent = 'Failed. Try again.';
+    document.getElementById('ai-status').style.color = 'var(--sub)';
+    document.getElementById('ai-run-btn').textContent = '✨ Run AI Enhance';
+  }
+  document.getElementById('ai-overlay').classList.remove('show');
+  document.getElementById('ai-run-btn').disabled = false;
+}
+
+async function applyAI() {
+  if (!aiPreviewUrl || !currentPhoto) return;
+  const thumb = await compress(aiPreviewUrl);
+  const url = thumb || aiPreviewUrl;
+  updateCurrentPhoto({ url, thumbnail: url, status: 'analyzed' });
+  closeModal();
+}
+
+// ─── Caption Actions ───────────────────────────────────────────────────────────
+async function makeArabic() {
+  if (!currentPhoto) return;
+  const btn = document.getElementById('make-ar-btn');
+  btn.textContent = 'Generating…'; btn.disabled = true;
+  document.getElementById('ar-error').style.display = 'none';
+  try {
+    const caption = document.getElementById('caption-en').value;
+    const ar = await generateArabicCaption(caption);
+    updateCurrentPhoto({ isArabic: true, caption_ar: ar });
+    document.getElementById('caption-ar').textContent = ar;
+    document.getElementById('caption-ar').style.display = 'block';
+    document.getElementById('caption-en').style.display = 'none';
+    document.getElementById('caption-lbl').textContent = 'Caption — Arabic';
+    btn.style.display = 'none';
+    document.getElementById('switch-en-btn').style.display = 'block';
+  } catch {
+    document.getElementById('ar-error').textContent = 'Could not generate. Try again.';
+    document.getElementById('ar-error').style.display = 'block';
+  }
+  btn.textContent = '🇪🇬 Make Arabic post'; btn.disabled = false;
+}
+
+function switchToEnglish() {
+  if (!currentPhoto) return;
+  updateCurrentPhoto({ isArabic: false, caption_ar: null });
+  document.getElementById('caption-ar').style.display = 'none';
+  document.getElementById('caption-en').style.display = 'block';
+  document.getElementById('caption-lbl').textContent = 'Caption — English';
+  document.getElementById('make-ar-btn').style.display = 'block';
+  document.getElementById('switch-en-btn').style.display = 'none';
+}
+
+function copyCaption() {
+  if (!currentPhoto) return;
+  const cap = currentPhoto.isArabic && currentPhoto.caption_ar ? currentPhoto.caption_ar : document.getElementById('caption-en').value;
+  const tags = (currentPhoto.analysis?.hashtags || []).join(' ');
+  navigator.clipboard.writeText(cap + (tags ? '\n\n' + tags : ''));
+  const btn = document.getElementById('copy-btn');
+  btn.textContent = '✓ Copied'; btn.style.color = 'var(--sage)';
+  setTimeout(() => { btn.textContent = 'Copy caption'; btn.style.color = ''; }, 2000);
+}
+
+// Hold original
+document.getElementById('orig-btn').addEventListener('mousedown', () => {
+  if (!currentPhoto) return;
+  document.getElementById('modal-photo').src = currentPhoto.thumbnail || currentPhoto.url || '';
+  document.getElementById('modal-photo').style.filter = 'none';
+  document.getElementById('orig-btn').textContent = 'ORIGINAL';
+  document.getElementById('orig-btn').style.background = 'var(--gold)';
+  document.getElementById('orig-btn').style.color = '#000';
+});
+document.getElementById('orig-btn').addEventListener('mouseup', restorePreview);
+document.getElementById('orig-btn').addEventListener('mouseleave', restorePreview);
+
+function restorePreview() {
+  document.getElementById('orig-btn').textContent = 'HOLD: ORIGINAL';
+  document.getElementById('orig-btn').style.background = 'rgba(7,16,13,0.9)';
+  document.getElementById('orig-btn').style.color = 'var(--cream)';
+  if (currentMode === 'ai' && aiPreviewUrl) {
+    document.getElementById('modal-photo').src = aiPreviewUrl;
+  } else if (currentMode === 'canvas') {
+    document.getElementById('modal-photo').style.filter = toFilter(getSliders());
+  }
+}
+
+// ─── Approve / Reject ─────────────────────────────────────────────────────────
+function approvePhoto() {
+  updateCurrentPhoto({ status: 'approved' }); closeModal();
+}
+function rejectPhoto() {
+  updateCurrentPhoto({ status: 'rejected' }); closeModal();
+}
+function unapprovePhoto() {
+  updateCurrentPhoto({ status: 'analyzed' }); closeModal();
+}
+
+// ─── File Processing ──────────────────────────────────────────────────────────
+async function processFiles(files) {
+  const valid = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (!valid.length) return;
+  const existingNames = new Set(photos.map(p => p.name));
+  const fresh = valid.filter(f => !existingNames.has(f.name));
+  if (!fresh.length) { showNotice('All photos already in library'); return; }
+
+  const newPhotos = await Promise.all(fresh.map(async file => {
+    let dataUrl = null;
+    try { dataUrl = await readFile(file); } catch {}
+    return { id: Math.random().toString(36).slice(2), file, url: dataUrl, name: file.name, status: 'analyzing', analysis: null, isArabic: false, caption_ar: null, thumbnail: null };
+  }));
+
+  photos = [...photos, ...newPhotos];
+  renderGrid(); updateStats();
+
+  for (const photo of newPhotos) {
+    try {
+      if (!photo.url) throw new Error('No image data');
+      const thumbnail = await compress(photo.url);
+      const base64 = thumbnail.split(',')[1];
+      const analysis = await analyzePhoto(base64, 'image/jpeg');
+      const status = analysis.postability === 'reject' ? 'rejected' : 'analyzed';
+      const updated = { ...photo, thumbnail, url: thumbnail || photo.url, analysis, status };
+      photos = photos.map(p => p.id === photo.id ? updated : p);
+      await savePhoto(updated);
+    } catch (e) {
+      photos = photos.map(p => p.id === photo.id ? { ...p, status: 'error' } : p);
+    }
+    renderGrid(); updateStats();
+  }
+}
+
+// ─── UI Helpers ───────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById('library').style.display = tab === 'library' ? 'block' : 'none';
+  document.getElementById('schedule').style.display = tab === 'schedule' ? 'block' : 'none';
+}
+
+function showNotice(msg) {
+  const n = document.getElementById('notice');
+  n.textContent = msg; n.style.display = 'block';
+  setTimeout(() => n.style.display = 'none', 3000);
+}
+
+async function clearAll() {
+  await clearAllData();
+}
+
+// ─── Filters ──────────────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderGrid();
+  });
+});
+
+// ─── Drag & Drop ──────────────────────────────────────────────────────────────
+let dragCounter = 0;
+document.addEventListener('dragenter', e => { dragCounter++; document.getElementById('drag-overlay').classList.add('show'); });
+document.addEventListener('dragleave', e => { dragCounter--; if (dragCounter === 0) document.getElementById('drag-overlay').classList.remove('show'); });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault(); dragCounter = 0;
+  document.getElementById('drag-overlay').classList.remove('show');
+  if (e.target.closest('#modal')) return;
+  processFiles(e.dataTransfer.files);
+});
+document.getElementById('drop-zone').addEventListener('dragover', e => { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag'); });
+document.getElementById('drop-zone').addEventListener('dragleave', () => document.getElementById('drop-zone').classList.remove('drag'));
+document.getElementById('drop-zone').addEventListener('drop', e => { e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag'); processFiles(e.dataTransfer.files); });
+document.getElementById('file-input').addEventListener('change', e => processFiles(e.target.files));
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  photos = await loadPhotos();
+  anthropicKey = localStorage.getItem(ANTHROPIC_KEY_STORAGE) || '';
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  renderGrid();
+  updateStats();
+  renderSchedule([]);
+}
+
+init();
+</script>
+</body>
+</html>

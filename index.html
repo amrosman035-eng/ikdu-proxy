@@ -52,6 +52,7 @@ input[type=range]{accent-color:var(--gold);cursor:pointer;width:100%}
 .ci{position:relative;padding-top:75%;background:#0a1510}
 .ci img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .ci .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:0.2}
++(p.hasEnhanced?'<div style="position:absolute;bottom:6px;left:6px;background:rgba(122,143,168,0.9);border-radius:4px;padding:2px 6px;font-size:8px;color:#fff;letter-spacing:0.06em">ENHANCED</div>':'')
 .co{position:absolute;inset:0;background:rgba(7,16,13,0.65);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--cream);letter-spacing:0.14em}
 .cr{position:absolute;top:6px;right:6px;background:rgba(7,16,13,0.88);border-radius:4px;padding:2px 6px;font-size:9px;color:var(--gold)}
 .ca{position:absolute;top:6px;left:6px;background:var(--terra);border-radius:4px;padding:2px 6px;font-size:9px;color:var(--cream)}
@@ -339,6 +340,7 @@ input[type=range]{accent-color:var(--gold);cursor:pointer;width:100%}
         <div id="rrej"><div style="font-size:9px;color:var(--terra);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px">Flagged reason</div><div id="rrejtxt"></div></div>
         <div id="arerr"></div>
         <div id="mactions">
+          <button id="exportbtn" onclick="exportPhoto()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--sub);font-size:12px">Download</button>
           <button id="arbtn" onclick="makeArabic()">Make Arabic post</button>
           <button id="enbtn" onclick="switchEn()">Switch to English</button>
           <button id="copybtn" onclick="copyCaption()">Copy caption</button>
@@ -373,14 +375,43 @@ function dbOpen(){return new Promise(function(res,rej){var r=indexedDB.open('ikd
 function dbGet(k){return dbOpen().then(function(db){return new Promise(function(res){var r=db.transaction('store','readonly').objectStore('store').get(k);r.onsuccess=function(){res(r.result);};r.onerror=function(){res(null);};});}).catch(function(){return null;});}
 function dbSet(k,v){return dbOpen().then(function(db){return new Promise(function(res){var tx=db.transaction('store','readwrite');tx.objectStore('store').put(v,k);tx.oncomplete=function(){res();};tx.onerror=function(){res();};});}).catch(function(){});}
 function dbDel(k){return dbOpen().then(function(db){return new Promise(function(res){var tx=db.transaction('store','readwrite');tx.objectStore('store').delete(k);tx.oncomplete=function(){res();};tx.onerror=function(){res();};});}).catch(function(){});}
+function saveEnhanced(id, dataUrl) { return dbSet('enhanced:'+id, dataUrl); }
+function getEnhanced(id) { return dbGet('enhanced:'+id); }
+function delEnhanced(id) { return dbDel('enhanced:'+id); }
+
+function exportPhoto() {
+  if (!curPhoto) return;
+  var btn = document.getElementById('exportbtn');
+  if (curPhoto.hasEnhanced) {
+    btn.textContent = 'Preparing...';
+    getEnhanced(curPhoto.id).then(function(dataUrl) {
+      if (!dataUrl) { alert('Enhanced file not found. Use original: ' + curPhoto.name); return; }
+      var a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = curPhoto.name.replace(/\.[^.]+$/, '') + '_ikdu.jpg';
+      a.click();
+      btn.textContent = 'Download';
+    });
+  } else {
+    alert('No enhanced version saved.\n\nUse your original file:\n' + curPhoto.name);
+  }
+}
 function savePhoto(p){
   if(!p.thumbnail)return Promise.resolve();
   return dbSet('p:'+p.id,{id:p.id,name:p.name,thumbnail:p.thumbnail,status:p.status,analysis:p.analysis,isArabic:p.isArabic,caption_ar:p.caption_ar}).then(function(){
     return dbGet('idx').then(function(idx){idx=idx||[];if(idx.indexOf(p.id)===-1){idx.push(p.id);return dbSet('idx',idx);}});
+    var data = {id:p.id, name:p.name, thumbnail:p.thumbnail, status:p.status, analysis:p.analysis, isArabic:p.isArabic, caption_ar:p.caption_ar, hasEnhanced:p.hasEnhanced||false};
   });
 }
-function delPhoto(id){photos=photos.filter(function(p){return p.id!==id;});return dbDel('p:'+id).then(function(){return dbGet('idx').then(function(idx){idx=(idx||[]).filter(function(i){return i!==id;});return dbSet('idx',idx);});});}
-function loadPhotos(){return dbGet('idx').then(function(idx){if(!idx||!idx.length)return[];return Promise.all(idx.map(function(id){return dbGet('p:'+id).then(function(d){return d?Object.assign({},d,{url:d.thumbnail}):null;});})).then(function(ps){return ps.filter(Boolean);});}).catch(function(){return[];});}
+function delPhoto(id) {
+  photos = photos.filter(function(p){return p.id!==id;});
+  return Promise.all([dbDel('p:'+id), delEnhanced(id)]).then(function() {
+    return dbGet('idx').then(function(idx) {
+      idx = (idx||[]).filter(function(i){return i!==id;});
+      return dbSet('idx', idx);
+    });
+  });
+}function loadPhotos(){return dbGet('idx').then(function(idx){if(!idx||!idx.length)return[];return Promise.all(idx.map(function(id){return dbGet('p:'+id).then(function(d){return d?Object.assign({},d,{url:d.thumbnail}):null;});})).then(function(ps){return ps.filter(Boolean);});}).catch(function(){return[];});}
 function saveSeqs(){return dbSet('sequences',sequences);}
 function loadSeqs(){return dbGet('sequences').then(function(s){return s||[];});}
 function clearAll(){if(!confirm('Clear all photos?'))return;dbGet('idx').then(function(idx){return Promise.all((idx||[]).map(function(id){return dbDel('p:'+id);})).then(function(){return dbDel('idx');});}).then(function(){photos=[];sequences=[];saveSeqs();renderGrid();updateStats();renderBA();});}
@@ -730,14 +761,28 @@ function applyPreset(n){var p=PRESETS[n];if(!p)return;setSliders(p);onSlider();d
 function resetSliders(){setSliders({b:0,c:0,s:0,w:0});onSlider();document.querySelectorAll('.pb').forEach(function(b){b.classList.remove('active');});}
 function applyCanvas(){if(!curPhoto)return;bakeFilter(curPhoto.thumbnail||curPhoto.url,getSliders()).then(function(bk){return compress(bk).then(function(th){updatePhoto({url:th||bk,thumbnail:th||bk,status:'analyzed'});closeModal();});});}
 function runAI(){if(!curPhoto)return;document.getElementById('aiov-label').textContent='AI ENHANCING...';document.getElementById('aiov-sub').textContent='5-15 seconds';document.getElementById('aiov').classList.add('show');document.getElementById('aierr').style.display='none';document.getElementById('airunbtn').textContent='Processing...';document.getElementById('airunbtn').disabled=true;document.getElementById('aistatus').style.color='var(--gold)';document.getElementById('aistatus').textContent='Sending to Clipdrop AI...';aiUpscaleAPI(curPhoto.thumbnail||curPhoto.url).then(function(r){aiUrl=r;document.getElementById('mphoto').src=r;document.getElementById('pbadge').classList.add('show');document.getElementById('aiusebtn').style.display='block';document.getElementById('aistatus').style.color='var(--sage)';document.getElementById('aistatus').textContent='Done! Hold HOLD: ORIGINAL to compare.';document.getElementById('airunbtn').textContent='Run Again';}).catch(function(e){document.getElementById('aierr').textContent=e.message;document.getElementById('aierr').style.display='block';document.getElementById('aistatus').textContent='Failed.';document.getElementById('aistatus').style.color='var(--sub)';document.getElementById('airunbtn').textContent='Run AI Enhance';}).finally(function(){document.getElementById('aiov').classList.remove('show');document.getElementById('airunbtn').disabled=false;});}
-function applyAI(){if(!aiUrl||!curPhoto)return;compress(aiUrl).then(function(th){updatePhoto({url:th||aiUrl,thumbnail:th||aiUrl,status:'analyzed'});closeModal();});}
-
+function applyAI() {
+  if (!aiUrl || !curPhoto) return;
+  saveEnhanced(curPhoto.id, aiUrl);
+  compress(aiUrl).then(function(thumb) {
+    updatePhoto({url:thumb||aiUrl, thumbnail:thumb||aiUrl, status:'analyzed', hasEnhanced:true});
+    closeModal();
+  });
+}
 // ── AI Edit ────────────────────────────────────────────────────────────────────
 function analyzeForEdits(){if(!curPhoto)return;var btn=document.getElementById('edit-analyzebtn');btn.disabled=true;btn.textContent='Analyzing...';document.getElementById('edit-suggestions').innerHTML='';document.getElementById('edit-err').style.display='none';document.getElementById('edit-status').style.display='none';document.getElementById('edit-savebtn').style.display='none';document.getElementById('aiov-label').textContent='ANALYZING PHOTO...';document.getElementById('aiov-sub').textContent='Finding edit opportunities';document.getElementById('aiov').classList.add('show');analyzeForEditsAPI((curPhoto.thumbnail||curPhoto.url).split(',')[1]).then(function(edits){editSuggestions=edits;if(!edits||!edits.length){document.getElementById('edit-err').textContent='No edits suggested — looks great already!';document.getElementById('edit-err').style.display='block';return;}document.getElementById('edit-suggestions').innerHTML=edits.map(function(e,i){return'<div class="edit-sug" id="edit-sug-'+i+'"><span class="edit-sug-label">'+e.label+'</span><button class="edit-sug-btn" onclick="applyEditSuggestion('+i+')">Apply</button></div>';}).join('');}).catch(function(e){document.getElementById('edit-err').textContent='Analysis failed: '+e.message;document.getElementById('edit-err').style.display='block';}).finally(function(){btn.disabled=false;btn.textContent='Analyze Again';document.getElementById('aiov').classList.remove('show');});}
 function applyEditSuggestion(idx){var edit=editSuggestions[idx];if(!edit)return;var btn=document.querySelector('#edit-sug-'+idx+' .edit-sug-btn');var errDiv=document.getElementById('edit-err'),stDiv=document.getElementById('edit-status');btn.textContent='Applying...';btn.classList.add('running');btn.disabled=true;errDiv.style.display='none';stDiv.style.display='block';stDiv.style.color='var(--gold)';stDiv.textContent='Sending to Gemini AI...';document.getElementById('edit-savebtn').style.display='none';document.getElementById('aiov-label').textContent='AI EDITING...';document.getElementById('aiov-sub').textContent=edit.label;document.getElementById('aiov').classList.add('show');runGeminiEdit(editUrl||curPhoto.thumbnail||curPhoto.url,edit.prompt).then(function(r){editUrl=r;document.getElementById('mphoto').src=r;document.getElementById('pbadge').classList.add('show');document.getElementById('ebadge').textContent='AI EDITED';btn.textContent='Done ✓';btn.classList.remove('running');btn.classList.add('done');btn.disabled=true;stDiv.style.color='var(--sage)';stDiv.textContent='Edit applied!';document.getElementById('edit-savebtn').style.display='block';}).catch(function(e){btn.textContent='Retry';btn.classList.remove('running');btn.disabled=false;errDiv.textContent='Edit failed: '+e.message;errDiv.style.display='block';stDiv.style.display='none';}).finally(function(){document.getElementById('aiov').classList.remove('show');});}
 function applyCustomEdit(){var prompt=document.getElementById('edit-custom-input').value.trim();if(!prompt)return;var errDiv=document.getElementById('edit-err'),stDiv=document.getElementById('edit-status');errDiv.style.display='none';stDiv.style.display='block';stDiv.style.color='var(--gold)';stDiv.textContent='Sending to Gemini AI...';document.getElementById('edit-savebtn').style.display='none';document.getElementById('aiov-label').textContent='AI EDITING...';document.getElementById('aiov-sub').textContent=prompt;document.getElementById('aiov').classList.add('show');runGeminiEdit(editUrl||curPhoto.thumbnail||curPhoto.url,prompt).then(function(r){editUrl=r;document.getElementById('mphoto').src=r;document.getElementById('pbadge').classList.add('show');document.getElementById('ebadge').textContent='AI EDITED';stDiv.style.color='var(--sage)';stDiv.textContent='Done! Apply more or save.';document.getElementById('edit-savebtn').style.display='block';document.getElementById('edit-custom-input').value='';}).catch(function(e){errDiv.textContent='Edit failed: '+e.message;errDiv.style.display='block';stDiv.style.display='none';}).finally(function(){document.getElementById('aiov').classList.remove('show');});}
-function applyEdit(){if(!editUrl||!curPhoto)return;var btn=document.getElementById('edit-savebtn');btn.textContent='Saving...';btn.disabled=true;compress(editUrl).then(function(th){updatePhoto({url:th||editUrl,thumbnail:th||editUrl,status:'analyzed'});editUrl=null;closeModal();});}
-
+function applyEdit() {
+  if (!editUrl || !curPhoto) return;
+  var btn = document.getElementById('edit-savebtn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+  saveEnhanced(curPhoto.id, editUrl);
+  compress(editUrl).then(function(thumb) {
+    updatePhoto({url:thumb||editUrl, thumbnail:thumb||editUrl, status:'analyzed', hasEnhanced:true});
+    editUrl = null; closeModal();
+  });
+}
 document.getElementById('obtn').addEventListener('mousedown',function(){if(!curPhoto)return;document.getElementById('mphoto').src=curPhoto.thumbnail||curPhoto.url||'';document.getElementById('mphoto').style.filter='none';document.getElementById('obtn').textContent='ORIGINAL';document.getElementById('obtn').style.background='var(--gold)';document.getElementById('obtn').style.color='#000';});
 function restorePreview(){document.getElementById('obtn').textContent='HOLD: ORIGINAL';document.getElementById('obtn').style.background='rgba(7,16,13,0.9)';document.getElementById('obtn').style.color='var(--cream)';if(curMode==='ai'&&aiUrl)document.getElementById('mphoto').src=aiUrl;else if(curMode==='edit'&&editUrl)document.getElementById('mphoto').src=editUrl;else if(curMode==='canvas')document.getElementById('mphoto').style.filter=toFilter(getSliders());}
 document.getElementById('obtn').addEventListener('mouseup',restorePreview);document.getElementById('obtn').addEventListener('mouseleave',restorePreview);

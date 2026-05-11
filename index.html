@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"/>
 <style>
+.sched-warn{background:rgba(140,74,32,0.1);border:1px solid rgba(140,74,32,0.3);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--terra);margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sched-warn-txt{flex:1;line-height:1.4}
+.sched-remove-btn{font-size:10px;padding:3px 10px;border-radius:4px;border:1px solid var(--terra);background:none;color:var(--terra);flex-shrink:0;white-space:nowrap}
+.sr2.flagged{border-color:rgba(140,74,32,0.4);background:rgba(140,74,32,0.04)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#07100d;--card:#0c1a14;--border:#1a2a1f;--border-light:#253c2c;--sage:#4d7a60;--lapis:#7a8fa8;--terra:#8c4a20;--gold:#b8813a;--cream:#e8d5b0;--text:#d4c9a8;--sub:#7a8a7a;--muted:#4a5a4a;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
@@ -352,6 +356,8 @@ input[type=range]{accent-color:var(--gold);cursor:pointer;width:100%}
 
 <script>
 var PROXY='https://ikdu-proxy.vercel.app';
+var scheduleItems = [];
+var similarWarnings = {};
 var CAT={finished_space:{label:'Finished Space',color:'#7a8fa8'},furniture:{label:'Furniture',color:'#b8813a'},progress:{label:'Progress',color:'#4d7a60'},materials:{label:'Materials',color:'#8c4a20'}};
 var PRESETS={'Auto Fix':{b:25,c:35,s:30,w:12},'Bright and Airy':{b:40,c:15,s:10,w:0},'Warm and Rich':{b:15,c:40,s:45,w:30},'Cool and Sharp':{b:10,c:45,s:15,w:-15}};
 var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -634,9 +640,75 @@ function updateSeqView(seqId,photoIds){
 
 // ── Schedule ───────────────────────────────────────────────────────────────────
 function getScheduleDates(n){var d=[],dt=new Date();dt.setDate(dt.getDate()+1);while(dt.getDay()!==2&&dt.getDay()!==5)dt.setDate(dt.getDate()+1);while(d.length<n){d.push(new Date(dt));dt.setDate(dt.getDate()+(dt.getDay()===2?3:4));}return d;}
-function genSchedule(){var a=photos.filter(function(p){return p.status==='approved';}).sort(function(a,b){return(b.analysis&&b.analysis.rating||0)-(a.analysis&&a.analysis.rating||0);});var ds=getScheduleDates(a.length);renderSchedule(a.map(function(p,i){return Object.assign({},p,{scheduledDate:ds[i]});}));showTab('schedule');}
-function renderSchedule(sched){var nd=document.getElementById('nosched'),sh=document.getElementById('sched-hdr'),sl=document.getElementById('schedlist'),ap=photos.filter(function(p){return p.status==='approved';}).length;if(!sched.length){nd.style.display='flex';sh.style.display='none';sl.innerHTML='';document.getElementById('sched-hint').textContent=ap>0?'Click Generate Schedule':'Approve photos first';return;}nd.style.display='none';sh.style.display='flex';sl.innerHTML=sched.map(function(post,i){var d=new Date(post.scheduledDate);var cat=post.analysis&&post.analysis.category?CAT[post.analysis.category]:null;var thumb=post.thumbnail||post.url||'';return'<div class="sr2"><div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">'+DAYS[d.getDay()]+'</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:19px;color:var(--cream)">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</div></div>'+(thumb?'<img src="'+thumb+'" style="width:80px;height:58px;object-fit:cover;border-radius:5px"/>'  :'<div style="width:80px;height:58px;background:var(--border);border-radius:5px"></div>')+'<div>'+(cat?'<div style="font-size:9px;color:'+cat.color+';text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">'+cat.label+'</div>':'')+'<div style="font-size:12px;color:var(--text);line-height:1.5">'+(post.isArabic&&post.caption_ar?post.caption_ar:(post.analysis&&post.analysis.caption_en||''))+'</div>'+(post.isArabic?'<div style="font-size:9px;color:var(--terra);margin-top:3px">Arabic post</div>':'')+'</div><div style="text-align:right"><div style="font-size:11px;color:var(--gold);margin-bottom:3px">'+stars(post.analysis&&post.analysis.rating||0)+'</div><div style="font-size:10px;color:var(--muted)">#'+(i+1)+'</div></div></div>';}).join('');}
-function stars(n){var s='';for(var i=0;i<5;i++)s+=i<n?'&#9733;':'&#9734;';return s;}
+function genSchedule() {
+  var approved = photos.filter(function(p){return p.status==='approved';})
+    .sort(function(a,b){return(b.analysis&&b.analysis.rating||0)-(a.analysis&&a.analysis.rating||0);});
+  if (!approved.length) return;
+  var dates = getScheduleDates(approved.length);
+  scheduleItems = approved.map(function(p,i){return Object.assign({},p,{scheduledDate:dates[i]});});
+  similarWarnings = {};
+  renderSchedule(scheduleItems);
+  showTab('schedule');
+
+  // Run similarity check in background — compare same-category pairs only
+  var btn = document.getElementById('schedule-btn');
+  btn.textContent = 'Checking duplicates...';
+  btn.disabled = true;
+
+  var pairs = [];
+  for (var i = 0; i < approved.length; i++) {
+    for (var j = i + 1; j < approved.length; j++) {
+      var ci = approved[i].analysis && approved[i].analysis.category;
+      var cj = approved[j].analysis && approved[j].analysis.category;
+      if (ci && cj && ci === cj) pairs.push({a: approved[i], b: approved[j]});
+    }
+  }
+
+  pairs.reduce(function(chain, pair) {
+    return chain.then(function() {
+      return checkSimilarityPair(pair.a, pair.b).then(function(r) {
+        if (r.similar) {
+          // Flag the lower-rated one (further down the schedule)
+          var flagId = (pair.a.analysis&&pair.a.analysis.rating||0) >= (pair.b.analysis&&pair.b.analysis.rating||0) ? pair.b.id : pair.a.id;
+          var otherName = flagId === pair.b.id ? pair.a.name.replace(/\.[^.]+$/,'') : pair.b.name.replace(/\.[^.]+$/,'');
+          similarWarnings[flagId] = 'Similar to "' + otherName + '" — ' + (r.reason||'');
+        }
+      });
+    });
+  }, Promise.resolve()).then(function() {
+    renderSchedule(scheduleItems);
+  }).finally(function() {
+    btn.textContent = 'Generate Schedule (' + approved.length + ')';
+    btn.disabled = false;
+  });
+}
+function renderSchedule(sched) {
+  var nd=document.getElementById('nosched'),sh=document.getElementById('sched-hdr'),sl=document.getElementById('schedlist');
+  var ap=photos.filter(function(p){return p.status==='approved';}).length;
+  if (!sched.length) {
+    nd.style.display='flex';sh.style.display='none';sl.innerHTML='';
+    document.getElementById('sched-hint').textContent=ap>0?'Click Generate Schedule':'Approve photos first';
+    return;
+  }
+  nd.style.display='none';sh.style.display='flex';
+  var warnCount=Object.keys(similarWarnings).length;
+  sl.innerHTML=(warnCount?'<div style="background:rgba(140,74,32,0.1);border:1px solid rgba(140,74,32,0.3);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--terra)">&#9888; '+warnCount+' similar photo'+(warnCount>1?'s':'')+' flagged below — review before posting</div>':'')+
+  sched.map(function(post,i){
+    var d=new Date(post.scheduledDate);
+    var cat=post.analysis&&post.analysis.category?CAT[post.analysis.category]:null;
+    var thumb=post.thumbnail||post.url||'';
+    var warn=similarWarnings[post.id];
+    return '<div class="sr2'+(warn?' flagged':'')+'">'+
+      '<div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">'+DAYS[d.getDay()]+'</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:19px;color:var(--cream)">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</div></div>'+
+      (thumb?'<img src="'+thumb+'" style="width:80px;height:58px;object-fit:cover;border-radius:5px"/>'  :'<div style="width:80px;height:58px;background:var(--border);border-radius:5px"></div>')+
+      '<div>'+(cat?'<div style="font-size:9px;color:'+cat.color+';text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">'+cat.label+'</div>':'')+
+      '<div style="font-size:12px;color:var(--text);line-height:1.5">'+(post.isArabic&&post.caption_ar?post.caption_ar:(post.analysis&&post.analysis.caption_en||''))+'</div>'+
+      (warn?'<div class="sched-warn"><span class="sched-warn-txt">&#9888; '+warn+'</span><button class="sched-remove-btn" onclick="removeFromSchedule(\''+post.id+'\')">Remove</button></div>':'')+
+      '</div>'+
+      '<div style="text-align:right"><div style="font-size:11px;color:var(--gold);margin-bottom:3px">'+stars(post.analysis&&post.analysis.rating||0)+'</div><div style="font-size:10px;color:var(--muted)">#'+(i+1)+'</div></div>'+
+    '</div>';
+  }).join('');
+}function stars(n){var s='';for(var i=0;i<5;i++)s+=i<n?'&#9733;':'&#9734;';return s;}
 
 // ── Grid ───────────────────────────────────────────────────────────────────────
 function filterPhotos(){return photos.filter(function(p){if(curFilter==='all')return true;if(curFilter==='ready')return p.status==='analyzed'&&p.analysis&&p.analysis.postability==='ready';if(curFilter==='enhance')return p.status==='analyzed'&&p.analysis&&p.analysis.postability==='enhance';if(curFilter==='approved')return p.status==='approved';if(curFilter==='rejected')return p.status==='rejected';if(curFilter==='progress')return p.status==='progress';return p.analysis&&p.analysis.category===curFilter;});}
@@ -695,7 +767,25 @@ document.getElementById('drop-zone').addEventListener('dragover',function(e){e.p
 document.getElementById('drop-zone').addEventListener('dragleave',function(){document.getElementById('drop-zone').classList.remove('drag');});
 document.getElementById('drop-zone').addEventListener('drop',function(e){e.preventDefault();e.stopPropagation();document.getElementById('drop-zone').classList.remove('drag');processFiles(e.dataTransfer.files);});
 document.getElementById('file-input').addEventListener('change',function(e){processFiles(e.target.files);e.target.value='';});
+function checkSimilarityPair(p1, p2) {
+  return callAPI({
+    model: 'claude-sonnet-4-6', max_tokens: 100,
+    messages: [{role: 'user', content: [
+      {type: 'image', source: {type: 'base64', media_type: 'image/jpeg', data: (p1.thumbnail||'').split(',')[1]}},
+      {type: 'image', source: {type: 'base64', media_type: 'image/jpeg', data: (p2.thumbnail||'').split(',')[1]}},
+      {type: 'text', text: 'Are these two interior design photos too similar to post separately on Instagram? Same room AND same angle or composition = too similar. Clearly different rooms or angles = fine. Respond ONLY with JSON: {"similar":true,"reason":"same living room, nearly identical angle"}'}
+    ]}]
+  }).then(function(data) {
+    var text = data.content.map(function(b){return b.text||'';}).join('');
+    return JSON.parse(text.replace(/```json|```/g,'').trim());
+  }).catch(function(){return{similar:false};});
+}
 
+function removeFromSchedule(id) {
+  scheduleItems = scheduleItems.filter(function(p){return p.id !== id;});
+  delete similarWarnings[id];
+  renderSchedule(scheduleItems);
+}
 Promise.all([loadPhotos(),loadSeqs()]).then(function(r){photos=r[0];sequences=r[1];document.getElementById('loading').style.display='none';document.getElementById('app').style.display='block';renderGrid();updateStats();renderSchedule([]);renderBA();}).catch(function(){document.getElementById('loading').style.display='none';document.getElementById('app').style.display='block';renderGrid();updateStats();renderSchedule([]);renderBA();});
 </script>
 </body>

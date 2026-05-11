@@ -284,6 +284,10 @@ input[type=range]{accent-color:var(--gold);cursor:pointer;width:100%}
             <button id="edit-analyzebtn" onclick="analyzeForEdits()">Analyze for Edits</button>
             <div id="edit-suggestions"></div>
             <div id="edit-err"></div>
+            <div id="edit-custom" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+  <textarea id="edit-custom-input" placeholder="Write your own edit instruction..." rows="2" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:12px;line-height:1.5;resize:none;outline:none;font-family:'DM Sans',sans-serif"></textarea>
+  <button onclick="applyCustomEdit()" style="width:100%;margin-top:6px;font-size:12px;padding:8px;border-radius:4px;border:none;background:var(--lapis);color:#fff;letter-spacing:0.04em">Apply Custom Edit</button>
+</div>
             <div id="edit-status"></div>
             <button id="edit-savebtn" onclick="applyEdit()">Save Edited Version</button>
           </div>

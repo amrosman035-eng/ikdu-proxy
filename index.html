@@ -491,7 +491,7 @@ function callAPI(body) {
 
 function analyzePhoto(base64, mime) {
   return callAPI({
-    model:'claude-sonnet-4-6-20260217', max_tokens:1000,
+    model:'claude-sonnet-4-6', max_tokens:1000,
     messages:[{role:'user', content:[
       {type:'image', source:{type:'base64', media_type:mime, data:base64}},
       {type:'text', text:'You are the content curator for IKDU - a luxury Egyptian design+build company. IKDU designs all types of spaces: villas, apartments, offices, retail, nail salons, kindergartens, clinics, restaurants, and more. Celebrate the space for what it is.\n\nRespond ONLY with valid JSON:\n{"category":"finished_space|furniture|progress|materials","rating":1,"postability":"ready|enhance|reject","caption_en":"1-2 sentence caption","hashtags":["tag1","tag2"],"enhancement_notes":"tip or null","reject_reason":"reason or null"}\n\nRating 1-5. Voice: Architectural Digest. Minimal. Confident.'}
@@ -505,7 +505,7 @@ function analyzePhoto(base64, mime) {
 
 function makeArabicAPI(caption) {
   return callAPI({
-    model:'claude-sonnet-4-6-20260217', max_tokens:300,
+    model:'claude-sonnet-4-6', max_tokens:300,
     messages:[{role:'user', content:'Translate to Arabic for IKDU luxury Egyptian design brand. Minimal refined tone. Return ONLY the Arabic:\n\n"'+caption+'"'}]
   }).then(function(data) { return data.content[0].text.trim(); });
 }
@@ -531,7 +531,7 @@ function aiUpscaleAPI(dataUrl) {
 // ── Stability AI Edit API ──────────────────────────────────────────────────────
 function analyzeForEditsAPI(base64) {
   return callAPI({
-    model:'claude-sonnet-4-6-20260217', max_tokens:800,
+    model:'claude-sonnet-4-6', max_tokens:800,
     messages:[{role:'user', content:[
       {type:'image', source:{type:'base64', media_type:'image/jpeg', data:base64}},
       {type:'text', text:'You are an AI photo editor for IKDU, a luxury Egyptian interior design brand. Analyze this photo and suggest specific targeted edits that would make it more postable on Instagram.\n\nRespond ONLY with valid JSON:\n{"edits":[{"label":"Short action label max 4 words","mode":"search_and_replace","search_prompt":"specific object or area to find in the image","prompt":"what to replace it with in luxury interior design style"}]}\n\nMax 4 suggestions. Only suggest edits that genuinely improve the photo. Be very specific in search_prompt so Stability AI can find the exact element.\n\nExamples of good suggestions:\n- label:"Remove floor clutter", search_prompt:"cardboard boxes and debris on floor", prompt:"clean polished marble floor"\n- label:"Add corner plant", search_prompt:"empty corner of room", prompt:"tall lush fiddle leaf fig tree in white ceramic planter"\n- label:"Clear side table", search_prompt:"cluttered side table with objects", prompt:"minimalist side table with single decorative vase"\n- label:"Improve wall art", search_prompt:"blank empty wall", prompt:"large framed abstract art in gold frame"\n\nIf the photo is already pristine, return fewer suggestions or just one subtle improvement.'}

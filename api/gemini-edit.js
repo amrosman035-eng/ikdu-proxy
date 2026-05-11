@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     const fullPrompt = `You are a photo editor for IKDU, a luxury Egyptian interior design brand. Edit this photo: ${prompt}. Keep the overall composition, perspective and lighting identical. Only make the requested change. Photorealistic, professionally staged, luxury aesthetic.`;
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${process.env.GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

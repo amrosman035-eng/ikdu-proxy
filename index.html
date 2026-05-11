@@ -755,6 +755,10 @@ function processFiles(files){
   var valid=Array.from(files).filter(function(f){
     return f.type.indexOf('image/')===0||imageExts.test(f.name);
   });
+var rawExts=/\.(cr2|cr3|nef|arw|orf|rw2|dng|raf|raw)$/i;
+var raws=valid.filter(function(f){return rawExts.test(f.name);});
+valid=valid.filter(function(f){return !rawExts.test(f.name);});
+if(raws.length) showNotice(raws.length+' RAW file'+(raws.length>1?'s':'')+' skipped — export as JPG from Lightroom/Photos first');
   if(!valid.length){showNotice('No supported image files found');return;}
   var ex=new Set(photos.map(function(p){return p.name;}));
   var fresh=valid.filter(function(f){return !ex.has(f.name);});

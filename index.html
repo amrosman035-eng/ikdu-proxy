@@ -541,14 +541,32 @@ async function generateArabicCaption(captionEn) {
   return data.content[0].text.trim();
 }
 
+async function compressForAI(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxSize = 800; // better quality for Clipdrop while staying under 4MB
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.5));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 async function aiUpscale(dataUrl) {
+  const compressed = await compressForAI(dataUrl);
   const { w, h } = await new Promise(resolve => {
     const img = new Image();
     img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-    img.src = dataUrl;
+    img.src = compressed;
   });
   const scale = Math.min(2, 4096 / Math.max(w, h));
-  const base64 = dataUrl.split(',')[1];
+  const base64 = compressed.split(',')[1];
   const res = await fetch(`${CLIPDROP_PROXY}/api/enhance`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1023,13 +1041,13 @@ document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   e.preventDefault(); dragCounter = 0;
   document.getElementById('drag-overlay').classList.remove('show');
-  if (e.target.closest('#modal')) return;
+  if (e.target.closest('#modal') || e.target.closest('#drop-zone')) return;
   processFiles(e.dataTransfer.files);
 });
 document.getElementById('drop-zone').addEventListener('dragover', e => { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag'); });
 document.getElementById('drop-zone').addEventListener('dragleave', () => document.getElementById('drop-zone').classList.remove('drag'));
-document.getElementById('drop-zone').addEventListener('drop', e => { e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag'); processFiles(e.dataTransfer.files); });
-document.getElementById('file-input').addEventListener('change', e => processFiles(e.target.files));
+document.getElementById('drop-zone').addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); document.getElementById('drop-zone').classList.remove('drag'); processFiles(e.dataTransfer.files); });
+document.getElementById('file-input').addEventListener('change', e => { processFiles(e.target.files); e.target.value = ''; });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {

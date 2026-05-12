@@ -707,15 +707,28 @@ function processOne(photo){
   if(!photo.url){photos=photos.map(function(p){return p.id===photo.id?Object.assign({},p,{status:'error'}):p;});renderGrid();return Promise.resolve();}
   var srcUrl=photo.url;
   return compress(srcUrl).then(function(th){
-    if(srcUrl.startsWith('blob:'))URL.revokeObjectURL(srcUrl);
     if(!th)throw new Error('Compress failed');
+    // Save HQ in background — don't wait for it
+    if(srcUrl.startsWith('blob:')){
+      compressHQ(srcUrl).then(function(hq){
+        URL.revokeObjectURL(srcUrl);
+        if(hq) saveOriginal(photo.id,hq);
+      });
+    }
     return analyzePhoto(th.split(',')[1],'image/jpeg').then(function(analysis){
       var status=analysis.category==='progress'?'progress':analysis.postability==='reject'?'rejected':'analyzed';
+      if(analysis.category==='progress') delOriginal(photo.id);
       var updated=Object.assign({},photo,{thumbnail:th,url:th,analysis:analysis,status:status});
       photos=photos.map(function(p){return p.id===photo.id?updated:p;});
       renderGrid();updateStats();renderBA();return savePhoto(updated);
     });
   }).catch(function(e){
+    console.error(photo.name,e);
+    if(srcUrl.startsWith('blob:'))URL.revokeObjectURL(srcUrl);
+    photos=photos.map(function(p){return p.id===photo.id?Object.assign({},p,{status:'error'}):p;});
+    renderGrid();
+  });
+}).catch(function(e){
     console.error(photo.name,e);
     if(srcUrl.startsWith('blob:'))URL.revokeObjectURL(srcUrl);
     photos=photos.map(function(p){return p.id===photo.id?Object.assign({},p,{status:'error'}):p;});

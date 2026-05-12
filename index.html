@@ -682,9 +682,27 @@ function processFiles(files){
   valid=valid.filter(function(f){return !rawExts.test(f.name);});
   if(raws.length)showNotice(raws.length+' RAW file'+(raws.length>1?'s':'')+' skipped — export as JPG first');
   if(!valid.length){showNotice('No supported image files found');return;}
-  var ex=new Set(photos.map(function(p){return p.name;}));
-  var fresh=valid.filter(function(f){return !ex.has(f.name);});
-  if(!fresh.length){showNotice('All photos already in library');return;}
+
+  var nameMap={};photos.forEach(function(p){nameMap[p.name]=p;});
+  var fresh=[],upgrades=[];
+  valid.forEach(function(f){
+    var existing=nameMap[f.name];
+    if(existing){
+      if(existing.status!=='progress') upgrades.push({file:f,photo:existing});
+    } else {
+      fresh.push(f);
+    }
+  });
+
+  if(upgrades.length){
+    showNotice('Upgrading '+upgrades.length+' photo'+(upgrades.length>1?'s':'')+' to high quality...');
+    upgrades.forEach(function(u){
+      var objUrl=URL.createObjectURL(u.file);
+      compressHQ(objUrl).then(function(hq){URL.revokeObjectURL(objUrl);if(hq)saveOriginal(u.photo.id,hq);});
+    });
+  }
+
+  if(!fresh.length) return;
   var newPhotos=fresh.map(function(file){return{id:Math.random().toString(36).slice(2),url:URL.createObjectURL(file),name:file.name,status:'analyzing',analysis:null,isArabic:false,caption_ar:null,thumbnail:null};});
   photos=photos.concat(newPhotos);renderGrid();updateStats();
   newPhotos.reduce(function(ch,p){return ch.then(function(){return processOne(p);});},Promise.resolve());
@@ -701,6 +719,7 @@ function processOne(photo){
     return analyzePhoto(th.split(',')[1],'image/jpeg').then(function(analysis){
       var status=analysis.category==='progress'?'progress':analysis.postability==='reject'?'rejected':'analyzed';
       var updated=Object.assign({},photo,{thumbnail:th,url:th,analysis:analysis,status:status});
+      if(analysis.category==='progress') delOriginal(photo.id);
       photos=photos.map(function(p){return p.id===photo.id?updated:p;});
       renderGrid();updateStats();renderBA();return savePhoto(updated);
     });

@@ -694,14 +694,9 @@ function processFiles(files){
     }
   });
 
-  if(upgrades.length){
-    showNotice('Upgrading '+upgrades.length+' photo'+(upgrades.length>1?'s':'')+' to high quality...');
-    upgrades.forEach(function(u){
-      var objUrl=URL.createObjectURL(u.file);
-      compressHQ(objUrl).then(function(hq){URL.revokeObjectURL(objUrl);if(hq)saveOriginal(u.photo.id,hq);});
-    });
-  }
-
+ if(upgrades.length){
+  showNotice(upgrades.length+' photo'+(upgrades.length>1?'s':'')+' already in library');
+}
   if(!fresh.length) return;
   var newPhotos=fresh.map(function(file){return{id:Math.random().toString(36).slice(2),url:URL.createObjectURL(file),name:file.name,status:'analyzing',analysis:null,isArabic:false,caption_ar:null,thumbnail:null};});
   photos=photos.concat(newPhotos);renderGrid();updateStats();
@@ -711,19 +706,22 @@ function processFiles(files){
 function processOne(photo){
   if(!photo.url){photos=photos.map(function(p){return p.id===photo.id?Object.assign({},p,{status:'error'}):p;});renderGrid();return Promise.resolve();}
   var srcUrl=photo.url;
-  return Promise.all([compress(srcUrl),compressHQ(srcUrl)]).then(function(results){
-    var th=results[0],hq=results[1];
+  return compress(srcUrl).then(function(th){
     if(srcUrl.startsWith('blob:'))URL.revokeObjectURL(srcUrl);
     if(!th)throw new Error('Compress failed');
-    if(hq)saveOriginal(photo.id,hq);
     return analyzePhoto(th.split(',')[1],'image/jpeg').then(function(analysis){
       var status=analysis.category==='progress'?'progress':analysis.postability==='reject'?'rejected':'analyzed';
       var updated=Object.assign({},photo,{thumbnail:th,url:th,analysis:analysis,status:status});
-      if(analysis.category==='progress') delOriginal(photo.id);
       photos=photos.map(function(p){return p.id===photo.id?updated:p;});
       renderGrid();updateStats();renderBA();return savePhoto(updated);
     });
   }).catch(function(e){
+    console.error(photo.name,e);
+    if(srcUrl.startsWith('blob:'))URL.revokeObjectURL(srcUrl);
+    photos=photos.map(function(p){return p.id===photo.id?Object.assign({},p,{status:'error'}):p;});
+    renderGrid();
+  });
+}).catch(function(e){
     console.error(photo.name,e);
     if(srcUrl.startsWith('blob:'))URL.revokeObjectURL(srcUrl);
     photos=photos.map(function(p){return p.id===photo.id?Object.assign({},p,{status:'error'}):p;});

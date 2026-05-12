@@ -452,7 +452,23 @@ function getScheduleDates(n){var d=[],dt=new Date();dt.setDate(dt.getDate()+1);w
 function checkSimilarityPair(p1,p2){return callAPI({model:'claude-sonnet-4-6',max_tokens:100,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:(p1.thumbnail||'').split(',')[1]}},{type:'image',source:{type:'base64',media_type:'image/jpeg',data:(p2.thumbnail||'').split(',')[1]}},{type:'text',text:'Are these two interior design photos too similar to post separately on Instagram? Same room AND same angle or composition = too similar. Clearly different rooms or angles = fine. Respond ONLY with JSON: {"similar":true,"reason":"brief reason"}'}]}]}).then(function(data){var text=data.content.map(function(b){return b.text||'';}).join('');return JSON.parse(text.replace(/```json|```/g,'').trim());}).catch(function(){return{similar:false};});}
 function removeFromSchedule(id){scheduleItems=scheduleItems.filter(function(p){return p.id!==id;});delete similarWarnings[id];renderSchedule(scheduleItems);}
 function genSchedule(){
-  var approved=photos.filter(function(p){return p.status==='approved';}).sort(function(a,b){return(b.analysis&&b.analysis.rating||0)-(a.analysis&&a.analysis.rating||0);});
+  var raw=photos.filter(function(p){return p.status==='approved';});
+  // Group by space_type (falls back to category) so no single project dominates
+  var groups={};
+  raw.forEach(function(p){
+    var key=(p.analysis&&p.analysis.space_type)||(p.analysis&&p.analysis.category)||'other';
+    if(!groups[key])groups[key]=[];
+    groups[key].push(p);
+  });
+  // Sort each group by rating desc
+  Object.keys(groups).forEach(function(k){
+    groups[k].sort(function(a,b){return(b.analysis&&b.analysis.rating||0)-(a.analysis&&a.analysis.rating||0);});
+  });
+  // Round-robin interleave across groups
+  var keys=Object.keys(groups);
+  var approved=[];
+  var maxLen=Math.max.apply(null,keys.map(function(k){return groups[k].length;}));
+  for(var i=0;i<maxLen;i++){keys.forEach(function(k){if(groups[k][i])approved.push(groups[k][i]);});}
   if(!approved.length)return;
   var dates=getScheduleDates(approved.length);
   scheduleItems=approved.map(function(p,i){return Object.assign({},p,{scheduledDate:dates[i]});});

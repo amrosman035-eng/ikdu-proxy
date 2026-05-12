@@ -704,17 +704,39 @@ function processFiles(files){
 }
 
 function processOne(photo){
-  if(!photo.url){photos=photos.map(function(p){return p.id===photo.id?Object.assign({},p,{status:'error'}):p;});renderGrid();return Promise.resolve();}
+  if(!photo.url){
+    photos=photos.map(function(p){return p.id===photo.id?Object.assign({},p,{status:'error'}):p;});
+    renderGrid();return Promise.resolve();
+  }
   var srcUrl=photo.url;
+  var isBlob=srcUrl.startsWith('blob:');
   return compress(srcUrl).then(function(th){
-    if(!th)throw new Error('Compress failed');
-    // Save HQ in background — don't wait for it
-    if(srcUrl.startsWith('blob:')){
+    if(!th){
+      if(isBlob)URL.revokeObjectURL(srcUrl);
+      throw new Error('Compress failed');
+    }
+    // HQ saves in background — doesn't block upload
+    if(isBlob){
       compressHQ(srcUrl).then(function(hq){
         URL.revokeObjectURL(srcUrl);
-        if(hq) saveOriginal(photo.id,hq);
-      });
+        if(hq)saveOriginal(photo.id,hq);
+      }).catch(function(){URL.revokeObjectURL(srcUrl);});
     }
+    return analyzePhoto(th.split(',')[1],'image/jpeg').then(function(analysis){
+      var status=analysis.category==='progress'?'progress':analysis.postability==='reject'?'rejected':'analyzed';
+      if(analysis.category==='progress')delOriginal(photo.id);
+      var updated=Object.assign({},photo,{thumbnail:th,url:th,analysis:analysis,status:status});
+      photos=photos.map(function(p){return p.id===photo.id?updated:p;});
+      renderGrid();updateStats();renderBA();
+      return savePhoto(updated);
+    });
+  }).catch(function(e){
+    console.error(photo.name,e);
+    if(isBlob)URL.revokeObjectURL(srcUrl);
+    photos=photos.map(function(p){return p.id===photo.id?Object.assign({},p,{status:'error'}):p;});
+    renderGrid();
+  });
+}
     return analyzePhoto(th.split(',')[1],'image/jpeg').then(function(analysis){
       var status=analysis.category==='progress'?'progress':analysis.postability==='reject'?'rejected':'analyzed';
       if(analysis.category==='progress') delOriginal(photo.id);
